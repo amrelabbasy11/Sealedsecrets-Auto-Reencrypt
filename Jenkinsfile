@@ -10,9 +10,10 @@ pipeline {
     environment {
         GIT_CREDENTIALS = 'github-token' // Replace with actual GitHub credentials ID
         AWS_CREDENTIALS = 'aws-credentials' // Replace with actual AWS credentials ID
-        AWS_REGION = 'eu-north-1'   // Ensure this is the correct region for your cluster
-        CLUSTER_NAME = 'my-eks-cluster'   // Replace with the name of your EKS cluster
+        AWS_REGION = 'eu-north-1'
+        CLUSTER_NAME = 'my-eks-cluster'
         KUBECONFIG = "${env.HOME}/.kube/config"
+        LOG_FILE = 'reencryption-log.txt'
     }
 
     stages {
@@ -57,71 +58,70 @@ pipeline {
             }
         }
 
-        stage('Verify Sealed Secrets Controller') {
+        stage('Wait for Sealed Secrets Controller') {
             steps {
-                script {
-                    sh '''
-                    kubectl wait -n sealed-secrets \
-                        --for=condition=ready pod \
-                        -l app.kubernetes.io/name=sealed-secrets \
-                        --timeout=120s
-                    '''
-                }
+                sh '''
+                kubectl wait -n sealed-secrets \
+                    --for=condition=ready pod \
+                    -l app.kubernetes.io/name=sealed-secrets \
+                    --timeout=120s
+                '''
             }
         }
 
-        stage('Fetch New Public Certificate') {
+        stage('Fetch Latest Public Key') {
             steps {
-                script {
-                    sh '''
-                    kubeseal --fetch-cert \
-                        --controller-name=sealed-secrets-controller \
-                        --controller-namespace=sealed-secrets \
-                        > new-cert.pem
-                    test -s new-cert.pem || { echo "ERROR: Failed to fetch certificate"; exit 1; }
-                    '''
-                }
+                sh '''
+                kubeseal --fetch-cert \
+                    --controller-name=sealed-secrets-controller \
+                    --controller-namespace=sealed-secrets \
+                    > new-cert.pem
+                test -s new-cert.pem || { echo "ERROR: Failed to fetch certificate"; exit 1; }
+                '''
             }
         }
 
-        stage('Extract and Re-seal Secrets') {
+        stage('Re-Encrypt SealedSecrets') {
             steps {
                 script {
                     sh '''
+                    echo "[INFO] Starting re-encryption process" > ${LOG_FILE}
                     mkdir -p sealedsecrets-reencrypted
 
-                    for ss in $(kubectl get sealedsecrets -A -o custom-columns=":metadata.namespace,:metadata.name" --no-headers); do
-                        ns=$(echo $ss | awk '{print $1}')
-                        name=$(echo $ss | awk '{print $2}')
+                    kubectl get sealedsecrets -A -o json | jq -c '.items[]' | while read ss; do
+                        ns=$(echo $ss | jq -r '.metadata.namespace')
+                        name=$(echo $ss | jq -r '.metadata.name')
 
-                        echo "Processing $ns/$name"
+                        echo "[INFO] Processing $ns/$name" | tee -a ${LOG_FILE}
 
-                        # Get decrypted Secret object (requires kubeseal controller to handle the decrypt/convert logic)
-                        secret=$(kubectl get secret "$name" -n "$ns" -o yaml 2>/dev/null || true)
+                        # Attempt to retrieve original Secret
+                        secret=$(kubeseal --re-encrypt \
+                            --controller-namespace=sealed-secrets \
+                            --controller-name=sealed-secrets-controller \
+                            --fetch-cert \
+                            --cert=new-cert.pem \
+                            --format yaml \
+                            --namespace "$ns" \
+                            < <(kubectl get sealedsecret "$name" -n "$ns" -o yaml) 2>>${LOG_FILE})
 
                         if [ -z "$secret" ]; then
-                            echo "Secret $ns/$name not found, skipping"
+                            echo "[WARN] Could not re-encrypt $ns/$name" | tee -a ${LOG_FILE}
                             continue
                         fi
 
-                        # Save secret yaml
-                        echo "$secret" > secret.yaml
+                        echo "$secret" > sealedsecrets-reencrypted/${ns}-${name}.yaml
 
-                        # Re-seal using new public key
-                        kubeseal --cert new-cert.pem \
-                            --format yaml \
-                            --namespace "$ns" \
-                            < secret.yaml \
-                            > sealedsecrets-reencrypted/${ns}-${name}.yaml
-
-                        rm -f secret.yaml
+                        # Apply updated SealedSecret
+                        kubectl apply -f sealedsecrets-reencrypted/${ns}-${name}.yaml >>${LOG_FILE} 2>&1
                     done
+
+                    echo "[INFO] Re-encryption complete" | tee -a ${LOG_FILE}
                     '''
                 }
             }
         }
 
-        stage('Commit Changes') {
+        stage('Commit and Push') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: GIT_CREDENTIALS,
@@ -131,7 +131,10 @@ pipeline {
                     script {
                         sh '''
                         cd Sealedsecrets-Auto-Reencrypt
+                        git config user.email "ci@sealedsecrets.com"
+                        git config user.name "Jenkins CI"
                         git add sealedsecrets-reencrypted/
+                        git add ${LOG_FILE}
                         if ! git diff-index --quiet HEAD --; then
                             git commit -m "Auto-reencrypted SealedSecrets with latest cert [ci skip]"
                             git push https://${GIT_USER}:${GIT_PASS}@github.com/amrelabbasy11/Sealedsecrets-Auto-Reencrypt.git main
@@ -150,25 +153,27 @@ pipeline {
             archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
             archiveArtifacts artifacts: 'new-cert.pem,sealedsecrets-reencrypted/*.yaml'
         }
+
         success {
             emailext(
                 subject: "SUCCESS: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
                 body: """
-                <p>Build succeeded!</p>
-                <p><b>Console URL:</b> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
+                <p>SealedSecrets were successfully re-encrypted and updated.</p>
+                <p><b>Console Output:</b> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
                 """,
                 to: 'amrelabbasy2003@gmail.com',
                 mimeType: 'text/html'
             )
         }
+
         failure {
             emailext(
                 subject: "FAILED: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
                 body: """
-                <p>Build failed. Check logs:</p>
+                <p>Re-encryption failed. Please check the logs.</p>
                 <p><a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
-                <p><b>Error snippet:</b><br>
-                ${currentBuild.rawBuild.getLog(100).join('\n')}
+                <p><b>Log Extract:</b><br>
+                ${currentBuild.rawBuild.getLog(50).join('<br>')}
                 </p>
                 """,
                 to: 'amrelabbasy2003@gmail.com',
