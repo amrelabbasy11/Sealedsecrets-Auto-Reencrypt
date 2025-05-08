@@ -2,12 +2,9 @@ pipeline {
     agent any
 
     environment {
-        GIT_CREDENTIALS = 'github-token'  // Replace with your GitHub credentials ID
-        AWS_CREDENTIALS = 'aws-credentials'  // Replace with your AWS credentials ID
-        AWS_REGION = 'eu-north-1'
-        CLUSTER_NAME = 'my-eks-cluster'
-        KUBECONFIG = "${env.HOME}/.kube/config"
-        LOG_FILE = 'reencryption-log.txt'
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        GIT_PASS = credentials('git-password')
     }
 
     stages {
@@ -19,90 +16,65 @@ pipeline {
 
         stage('Setup Environment') {
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: AWS_CREDENTIALS
-                ]]) {
-                    script {
-                        sh '''
-                        mkdir -p ~/.kube
-                        aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-                        aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-                        aws configure set region ${AWS_REGION}
-                        aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_REGION}
-                        '''
-                    }
+                withCredentials([string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                                 string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh '''
+                    mkdir -p /var/lib/jenkins/.kube
+                    aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+                    aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+                    aws configure set region eu-north-1
+                    aws eks update-kubeconfig --name my-eks-cluster --region eu-north-1
+                    '''
                 }
             }
         }
 
         stage('Git Clone') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: GIT_CREDENTIALS,
-                    usernameVariable: 'GIT_USER',
-                    passwordVariable: 'GIT_PASS'
-                )]) {
-                    script {
-                        def repoDir = 'Sealedsecrets-Auto-Reencrypt'
-                        if (fileExists(repoDir)) {
-                            dir(repoDir) {
-                                sh 'git fetch --all'
-                                sh 'git reset --hard origin/main'
-                            }
-                        } else {
-                            sh "git clone https://${GIT_USER}:${GIT_PASS}@github.com/amrelabbasy11/Sealedsecrets-Auto-Reencrypt.git"
-                        }
-                    }
+                withCredentials([string(credentialsId: 'git-password', variable: 'GIT_PASS')]) {
+                    sh '''
+                    git fetch --all
+                    git reset --hard origin/main
+                    '''
                 }
             }
         }
 
         stage('Wait for Sealed Secrets Controller') {
             steps {
-                script {
-                    sh 'kubectl wait -n sealed-secrets --for=condition=ready pod -l app.kubernetes.io/name=sealed-secrets --timeout=120s'
-                }
+                sh '''
+                kubectl wait -n sealed-secrets --for=condition=ready pod -l app.kubernetes.io/name=sealed-secrets --timeout=120s
+                '''
             }
         }
 
         stage('Fetch Latest Public Key') {
             steps {
-                script {
-                    sh '''
-                    kubeseal --fetch-cert --controller-name=sealed-secrets-controller --controller-namespace=sealed-secrets
-                    test -s new-cert.pem
-                    '''
-                }
+                sh '''
+                kubeseal --fetch-cert --controller-name=sealed-secrets-controller --controller-namespace=sealed-secrets
+                test -s new-cert.pem
+                '''
             }
         }
 
         stage('Re-Encrypt SealedSecrets') {
             steps {
-                script {
-                    sh '''
-                    echo "[INFO] Starting re-encryption process"
-                    mkdir -p sealedsecrets-reencrypted
-                    for secret in $(find . -name '*.sealedsecret'); do
-                        kubeseal --cert new-cert.pem -o yaml < $secret > sealedsecrets-reencrypted/$(basename $secret)
-                    done
-                    '''
-                }
+                sh '''
+                echo [INFO] Starting re-encryption process
+                mkdir -p sealedsecrets-reencrypted
+                find . -name "*.sealedsecret" -exec kubeseal --cert new-cert.pem -o yaml --re-encrypt {} > sealedsecrets-reencrypted/$(basename {} .sealedsecret).yaml \;
+                '''
             }
         }
 
         stage('Commit and Push') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: GIT_CREDENTIALS,
-                    usernameVariable: 'GIT_USER',
-                    passwordVariable: 'GIT_PASS'
-                )]) {
+                withCredentials([string(credentialsId: 'git-password', variable: 'GIT_PASS')]) {
                     script {
                         sh '''
-                        git config user.name "Jenkins"
-                        git config user.email "jenkins@example.com"
-                        git add sealedsecrets-reencrypted/*
+                        git config user.name Jenkins
+                        git config user.email jenkins@example.com
+                        git add sealedsecrets-reencrypted/*.yaml
                         git commit -m "Re-encrypted Sealed Secrets"
                         git push origin main
                         '''
@@ -114,17 +86,11 @@ pipeline {
 
     post {
         always {
-            archiveArtifacts artifacts: 'sealedsecrets-reencrypted/*', allowEmptyArchive: true
+            archiveArtifacts allowEmptyArchive: true, artifacts: '**/sealedsecrets-reencrypted/*.yaml'
             cleanWs()
         }
-
-        success {
-            echo "Pipeline executed successfully."
-        }
-
         failure {
-            echo "Pipeline failed."
-            // Handle failure, e.g., send notifications, logs, etc.
+            echo 'Pipeline failed.'
         }
     }
 }
