@@ -12,8 +12,9 @@ pipeline {
         AWS_CREDENTIALS = 'aws-credentials'
         AWS_REGION = 'eu-north-1'
         CLUSTER_NAME = 'my-eks-cluster'
-        KUBECONFIG = "${env.HOME}/.kube/config"
+        KUBECONFIG = "${env.WORKSPACE}/.kube/config"
         LOG_DIR = "${env.WORKSPACE}/logs"
+        REPO_DIR = "${env.WORKSPACE}/Sealedsecrets-Auto-Reencrypt"
     }
 
     stages {
@@ -27,7 +28,7 @@ pipeline {
                 ]]) {
                     script {
                         sh '''
-                        mkdir -p ~/.kube
+                        mkdir -p ${WORKSPACE}/.kube
                         aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
                         aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
                         aws configure set region ${AWS_REGION}
@@ -47,14 +48,16 @@ pipeline {
                     passwordVariable: 'GIT_PASS'
                 )]) {
                     script {
-                        def repoDir = 'Sealedsecrets-Auto-Reencrypt'
-                        if (fileExists(repoDir)) {
-                            dir(repoDir) {
+                        if (fileExists("${REPO_DIR}")) {
+                            dir("${REPO_DIR}") {
                                 sh 'git fetch --all'
                                 sh 'git reset --hard origin/main'
                             }
                         } else {
-                            sh "git clone https://${GIT_USER}:${GIT_PASS}@github.com/amrelabbasy11/Sealedsecrets-Auto-Reencrypt.git"
+                            sh """
+                            git clone https://${GIT_USER}:${GIT_PASS}@github.com/amrelabbasy11/Sealedsecrets-Auto-Reencrypt.git \
+                                ${REPO_DIR}
+                            """
                         }
                     }
                 }
@@ -81,8 +84,8 @@ pipeline {
                     kubeseal --fetch-cert \
                         --controller-name=sealed-secrets-controller \
                         --controller-namespace=sealed-secrets \
-                        > new-cert.pem 2> ${LOG_DIR}/cert-fetch-errors.log
-                    test -s new-cert.pem || { 
+                        > ${REPO_DIR}/new-cert.pem 2> ${LOG_DIR}/cert-fetch-errors.log
+                    test -s ${REPO_DIR}/new-cert.pem || { 
                         echo "ERROR: Failed to fetch certificate" | tee -a ${LOG_DIR}/errors.log
                         exit 1 
                     }
@@ -94,7 +97,6 @@ pipeline {
         stage('Extract and Re-seal Secrets') {
             steps {
                 script {
-                    // Initialize counters as environment variables so they persist
                     env.SECRET_COUNT = 0
                     env.ERROR_COUNT = 0
 
@@ -109,13 +111,13 @@ pipeline {
                                         def secretName = secret.split('/')[1]
                                         sh """
                                         echo "[INFO] Processing ${ns}/${secretName}" >> ${LOG_DIR}/reencryption.log
-                                        kubectl get secret ${secretName} -n ${ns} -o yaml > secret.yaml 2>> ${LOG_DIR}/warnings.log
-                                        kubeseal --cert new-cert.pem \
+                                        kubectl get secret ${secretName} -n ${ns} -o yaml > ${REPO_DIR}/secret.yaml 2>> ${LOG_DIR}/warnings.log
+                                        kubeseal --cert ${REPO_DIR}/new-cert.pem \
                                             --format yaml \
                                             --namespace ${ns} \
-                                            < secret.yaml \
-                                            > sealedsecrets-reencrypted/${ns}-${secretName}.yaml 2>> ${LOG_DIR}/reencryption-errors.log
-                                        rm -f secret.yaml
+                                            < ${REPO_DIR}/secret.yaml \
+                                            > ${REPO_DIR}/sealedsecrets-reencrypted/${ns}-${secretName}.yaml 2>> ${LOG_DIR}/reencryption-errors.log
+                                        rm -f ${REPO_DIR}/secret.yaml
                                         """
                                         env.SECRET_COUNT = env.SECRET_COUNT.toInteger() + 1
                                     } catch (Exception e) {
@@ -148,19 +150,23 @@ pipeline {
                     passwordVariable: 'GIT_PASS'
                 )]) {
                     script {
-                        sh """
-                        cd Sealedsecrets-Auto-Reencrypt
-                        mkdir -p sealedsecrets-reencrypted
-                        git add sealedsecrets-reencrypted/ ${LOG_DIR}/
-                        if ! git diff-index --quiet HEAD --; then
-                            git config user.email "amrelabbasy2003@gmail.com"
-                            git config user.name "Jenkins"
-                            git commit -m "Auto-reencrypted ${env.SECRET_COUNT} SealedSecrets [ci skip]"
-                            git push https://${GIT_USER}:${GIT_PASS}@github.com/amrelabbasy11/Sealedsecrets-Auto-Reencrypt.git main
-                        else
-                            echo "No changes to commit" >> ${LOG_DIR}/summary.log
-                        fi
-                        """
+                        dir("${REPO_DIR}") {
+                            // Securely handle the git push without string interpolation
+                            sh '''
+                            mkdir -p sealedsecrets-reencrypted
+                            git add sealedsecrets-reencrypted/ new-cert.pem
+                            if ! git diff-index --quiet HEAD --; then
+                                git config user.email "amrelabbasy2003@gmail.com"
+                                git config user.name "Jenkins"
+                                git commit -m "Auto-reencrypted ''' + env.SECRET_COUNT + ''' SealedSecrets [ci skip]"
+                                git push https://$GIT_USER:$GIT_PASS@github.com/amrelabbasy11/Sealedsecrets-Auto-Reencrypt.git main
+                            else
+                                echo "No changes to commit" >> ../logs/summary.log
+                            fi
+                            '''
+                        }
+                        // Copy logs into the repo for archiving
+                        sh "cp -r ${LOG_DIR} ${REPO_DIR}/jenkins-logs || true"
                     }
                 }
             }
@@ -170,14 +176,13 @@ pipeline {
     post {
         always {
             archiveArtifacts artifacts: "${LOG_DIR}/**", allowEmptyArchive: true
-            archiveArtifacts artifacts: 'new-cert.pem,sealedsecrets-reencrypted/*.yaml'
-            sh "rm -f secret.yaml new-cert.pem || true"
+            archiveArtifacts artifacts: "${REPO_DIR}/new-cert.pem,${REPO_DIR}/sealedsecrets-reencrypted/*.yaml"
+            sh "rm -f ${REPO_DIR}/secret.yaml ${REPO_DIR}/new-cert.pem || true"
         }
         success {
             script {
                 def summary = readFile("${LOG_DIR}/summary.log")
                 echo "Build succeeded!\n${summary}"
-                // Make sure email is configured in Jenkins system settings
                 try {
                     emailext(
                         subject: "SUCCESS: Re-encrypted ${env.SECRET_COUNT} SealedSecrets",
