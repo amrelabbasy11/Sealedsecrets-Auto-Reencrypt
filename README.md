@@ -36,8 +36,7 @@ The project is built using a **CI/CD pipeline** consisting of:
   - private-key.pem: Possibly a key used for managing the main secret key (master.key) or other security tasks.
   - public-cert.pem: Similar to private-key.pem, likely involved in managing the security keys.
   - reencrypt.sh: A script you might run manually to help with the re-encryption, similar to what Jenkins does automatically.
-
-    
+ 
 ---
 
 ## Toolchain Setup and Configuration
@@ -96,6 +95,8 @@ The project is built using a **CI/CD pipeline** consisting of:
    - Create a target folder for updated secrets.
    - Generate a GitHub PAT (Personal Access Token) or SSH key and add it to Jenkins.
 
+---
+
 
 ## Pipeline Architecture
   - The Jenkins pipeline will automate the process of re-encrypting SealedSecrets using the latest public key from the Sealed Secrets controller. 
@@ -112,7 +113,7 @@ The project is built using a **CI/CD pipeline** consisting of:
 
    Each stage should be properly monitored, with any issues logged and reported.
 
-### 2. ⚙️ Pipeline Configuration
+### 2. Pipeline Configuration
 
 - Install required Jenkins plugins:
   - **Git Plugin**: For interacting with GitHub.
@@ -140,6 +141,7 @@ The project is built using a **CI/CD pipeline** consisting of:
 ### jenkins-build-artifacts
   ![WhatsApp Image 2025-05-08 at 19 10 53_1a75c8b7](https://github.com/user-attachments/assets/16f0d888-58e1-47fc-ad64-be922824e5ed)
 
+---
 
 ## Authentication & Security
  ### Kubernetes 
@@ -156,7 +158,8 @@ The project is built using a **CI/CD pipeline** consisting of:
  ### ArgoCD:
    - Enable SSO or role-based access
    - Limit write access to only sync and read secrets
-   - 
+
+---
 
 ## Configuring ArgoCD and Connecting to GitHub Repository
 
