@@ -1,15 +1,17 @@
 # Sealedsecrets-Auto-Reencrypt
 
-This document outlines a proposed feature to enhance the `kubeseal` command-line interface (CLI) with the capability to automatically re-encrypt all existing `SealedSecret` Kubernetes objects within a cluster. This functionality aims to simplify the process of rotating the Sealed Secrets controller's public key and ensuring that all secrets are encrypted using the latest certificate—regardless of the Kubernetes distribution or environment.
+##  Overview
 
-The project introduces a CI/CD pipeline that connects **GitHub**, **Jenkins**, **EKS**, and **ArgoCD**. It automates the following:
+This document outlines a proposed feature to enhance the `kubeseal` CLI tool by **automating the re-encryption of all `SealedSecret` resources in a Kubernetes cluster**. This allows seamless rotation of the Sealed Secrets controller's public key without manual secret management.
 
-- Fetching the latest public certificate from the Sealed Secrets controller
-- Re-encrypting all sealed secrets
-- Committing changes to GitHub
-- Synchronizing updates to the cluster using ArgoCD
+The project is built using a **CI/CD pipeline** consisting of:
 
-This feature will **streamline secret rotation**, strengthen security hygiene, and reduce the operational burden on DevOps teams.
+- **GitHub**: Stores the SealedSecrets
+- **Jenkins**: Automates re-encryption, commits, and push
+- **ArgoCD**: Syncs changes to the Kubernetes cluster
+- **EKS (AWS)**: The target Kubernetes environment
+
+---
 
 ## Goals
 
@@ -23,7 +25,7 @@ This feature will **streamline secret rotation**, strengthen security hygiene, a
 ## Plan Diagram 
 ![WhatsApp Image 2025-05-07 at 21 19 44_3360f69c](https://github.com/user-attachments/assets/9f5f549f-e6c4-449e-aa7f-03f1e74b02b2)
 
-
+---
 
 ## Project Layout
   - infrastructure/argocd/sealedsecrets-app.yaml: File for Argo CD, a tool to automatically deploy and manage your Sealed Secrets in your Kubernetes setup.
@@ -36,41 +38,55 @@ This feature will **streamline secret rotation**, strengthen security hygiene, a
   - reencrypt.sh: A script you might run manually to help with the re-encryption, similar to what Jenkins does automatically.
 
     
+---
 
-## Dependencies
-  - Kubernetes Cluster: To run the Sealed Secrets controller and deploy the re-encrypted secrets.
-  - Sealed Secrets Controller: Installed in the Kubernetes cluster to manage SealedSecret resources.
-  - kubeseal CLI: Used in the Jenkins pipeline (and potentially reencrypt.sh) to fetch the certificate and seal/re-encrypt secrets.
-  - Argo CD: Managing the deployment of Sealed Secrets configurations.
-  - Jenkins: Automation server to run the pipeline.
-  - Git: For version control of your configurations and the Jenkinsfile.
-  - AWS CLI and Credentials: For interacting with your AWS EKS cluster.
+## Toolchain Setup and Configuration
 
-    
+### 1. Jenkins
 
-## Jenkins Setup
-  ### Connect Jenkins with GitHub and Docker (Important: Since the repository is private, authentication is required):
-   - Configure GitHub credentials in Jenkins to allow access to the private repository.
-   - Set up Docker credentials in Jenkins to push images to Docker Hub.
+- Required Plugins:
+  - Git
+  - GitHub
+  - Pipeline
+  - SSH Agent
+  - Kubernetes CLI (optional for `kubectl` integration)
+  - Email Extension Plugin
+  - Mailer Plugin:
 
-  ### Create a Pipeline Job:
-   - Set up a new Jenkins pipeline to manage the deployment process.
+#### Configuration
 
-  ### Use the Provided Jenkinsfile:
-   - Configure the pipeline using the Jenkinsfile script included in this repository.
+- Add GitHub credentials (Personal Access Token or SSH key)
+- Add Kubernetes CLI credentials:
+  - Store `kubeconfig` as a secret file in Jenkins
+- Add Sealed Secrets public cert fetching logic in pipeline script
+
+---
+
+### 2. Amazon EKS
+
+- Create an **EKS cluster** using `eksctl` or the AWS Console.
+  ![WhatsApp Image 2025-05-08 at 21 37 43_1ae09569](https://github.com/user-attachments/assets/f08dd208-4880-4267-960d-eea9e0bc6033)
+
+- Ensure the cluster is accessible via `kubectl`.
+- Deploy the **Sealed Secrets controller**:
+  `kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.25.0/controller.yaml`
+
+## AWS CLI Configuration
+
+#### Configure AWS Credentials
+   - Run the following command to set up your AWS credentials:
+     `aws configure`
+      Enter your AWS Access Key, AWS Secret Key, Region, and Output format when prompted.
+   - Update kubeconfig for EKS:
+      `aws eks update-kubeconfig --name python-app-cluster --region us-west-2`
+   - Deploy the Sealed Secrets controller:
+     `kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.25.0/controller.yaml`
+   - Verify the Deployment:
+     `kubectl get pods -n kube-system`
+     ![WhatsApp Image 2025-05-08 at 21 40 34_f5d1c758](https://github.com/user-attachments/assets/11243cce-34ca-4450-b938-1a0fd893f3c6)
+
+
+
+
 
      
-
-## Jenkinsfile Pipeline
-  This Jenkins pipeline performs the following steps:
-  ### Triggers
-  Automatically triggered via GitHub webhook push events using `githubPush()`.
-  ### Environment Configuration
-  - Jenkins credentials store:
-      1. AWS Access Key ID & Secret Access Key
-      2. GitHub Personal Access Token (PAT)
-      3. AWS Region & EKS Cluster name
-      4. Optional: ArgoCD authentication token (for manual sync)
-   
-
-
