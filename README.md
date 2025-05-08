@@ -4,18 +4,11 @@
 This project automates the process of fetching the latest public key from the Sealed Secrets controller on an AWS EKS cluster and re-sealing all existing SealedSecret Kubernetes objects using the new public key. It integrates GitHub, Jenkins, ArgoCD, and EKS to ensure a secure, fully automated GitOps workflow.
 
 ## Project Layout
-infrastructure/argocd/sealedsecrets-app.yaml: This suggests you are using Argo CD for GitOps-based deployments. This file likely defines an Argo CD Application resource to manage the deployment of Sealed Secrets or related components in your Kubernetes cluster.
-
-sealedsecrets-reencrypted/: This directory contains the re-encrypted SealedSecret YAML files. Your Jenkins pipeline is generating these.
-
-Jenkinsfile: This is the definition of your Jenkins pipeline, outlining the steps for fetching the new certificate, re-encrypting secrets, and potentially committing the changes.
-
-master.key: This is the master key used by the Sealed Secrets controller to decrypt SealedSecret resources.
-
-new-cert.pem: This file contains the newly fetched public certificate of the Sealed Secrets controller. Your Jenkins pipeline uses this to re-encrypt the secrets.
-
-private-key.pem: This might be related to generating or managing the master key or other aspects of the Sealed Secrets setup.
-
-public-cert.pem: Similar to private-key.pem, this could be part of the key management lifecycle.
-
-reencrypt.sh: This looks like a shell script that might contain logic for manually triggering or assisting with the re-encryption process. Your Jenkinsfile likely orchestrates similar steps.
+  - infrastructure/argocd/sealedsecrets-app.yaml: File for Argo CD, a tool to automatically deploy and manage your Sealed Secrets in your Kubernetes setup.
+  - sealedsecrets-reencrypted/: Folder where the updated, re-encrypted secret files are stored after Jenkins processes them.
+  - Jenkinsfile: The script that tells Jenkins exactly how to automatically fetch the new certificate and re-encrypt your secrets.
+  - master.key: The secret key the Sealed Secrets system uses to unlock your original secrets.
+  - new-cert.pem: The new public key used to lock up your secrets again during the re-encryption process in Jenkins.
+  - private-key.pem: Possibly a key used for managing the main secret key (master.key) or other security tasks.
+  - public-cert.pem: Similar to private-key.pem, likely involved in managing the security keys.
+  - reencrypt.sh: A script you might run manually to help with the re-encryption, similar to what Jenkins does automatically
