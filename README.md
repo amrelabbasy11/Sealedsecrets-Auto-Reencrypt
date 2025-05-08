@@ -21,6 +21,16 @@
   - Argo CD: Managing the deployment of Sealed Secrets configurations.
   - Jenkins: Automation server to run the pipeline.
   - Git: For version control of your configurations and the Jenkinsfile.
-  - AWS CLI and Credentials: (Based on your Jenkinsfile) For interacting with your AWS EKS cluster.
+  - AWS CLI and Credentials: For interacting with your AWS EKS cluster.
 
 ## Jenkinsfile Pipeline
+  This Jenkins pipeline performs the following steps:
+
+  ### Triggers
+  Automatically triggered via GitHub webhook push events using githubPush().
+  Environment Configuration
+  Jenkins credentials store:
+  AWS Access Key ID & Secret Access Key
+  GitHub Personal Access Token (PAT)
+  AWS Region & EKS Cluster name
+  Optional: ArgoCD authentication token (for manual sync)
