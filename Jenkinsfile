@@ -14,7 +14,8 @@ pipeline {
         CLUSTER_NAME = 'my-eks-cluster'
         KUBECONFIG = "${env.WORKSPACE}/.kube/config"
         LOG_DIR = "${env.WORKSPACE}/logs"
-        REPO_DIR = "${env.WORKSPACE}/Sealedsecrets-Auto-Reencrypt"
+        REPO_DIR = "Sealedsecrets-Auto-Reencrypt"
+        ARTIFACT_DIR = "${env.WORKSPACE}/artifacts"
     }
 
     stages {
@@ -36,7 +37,10 @@ pipeline {
                         '''
                     }
                 }
-                sh "mkdir -p ${LOG_DIR}"
+                sh """
+                mkdir -p ${LOG_DIR}
+                mkdir -p ${ARTIFACT_DIR}
+                """
             }
         }
 
@@ -59,6 +63,10 @@ pipeline {
                                 ${REPO_DIR}
                             """
                         }
+                        // Create necessary directories in the repo
+                        sh """
+                        mkdir -p ${REPO_DIR}/sealedsecrets-reencrypted
+                        """
                     }
                 }
             }
@@ -153,7 +161,6 @@ pipeline {
                         dir("${REPO_DIR}") {
                             // Securely handle the git push without string interpolation
                             sh '''
-                            mkdir -p sealedsecrets-reencrypted
                             git add sealedsecrets-reencrypted/ new-cert.pem
                             if ! git diff-index --quiet HEAD --; then
                                 git config user.email "amrelabbasy2003@gmail.com"
@@ -165,8 +172,12 @@ pipeline {
                             fi
                             '''
                         }
-                        // Copy logs into the repo for archiving
-                        sh "cp -r ${LOG_DIR} ${REPO_DIR}/jenkins-logs || true"
+                        // Copy logs into the artifact directory
+                        sh """
+                        cp -r ${LOG_DIR} ${ARTIFACT_DIR}/logs || true
+                        cp ${REPO_DIR}/new-cert.pem ${ARTIFACT_DIR}/ || true
+                        cp ${REPO_DIR}/sealedsecrets-reencrypted/*.yaml ${ARTIFACT_DIR}/ || true
+                        """
                     }
                 }
             }
@@ -175,9 +186,14 @@ pipeline {
 
     post {
         always {
-            archiveArtifacts artifacts: "${LOG_DIR}/**", allowEmptyArchive: true
-            archiveArtifacts artifacts: "${REPO_DIR}/new-cert.pem,${REPO_DIR}/sealedsecrets-reencrypted/*.yaml"
-            sh "rm -f ${REPO_DIR}/secret.yaml ${REPO_DIR}/new-cert.pem || true"
+            // Archive all artifacts from the dedicated artifact directory
+            archiveArtifacts artifacts: "artifacts/**", allowEmptyArchive: true
+            
+            // Cleanup
+            sh """
+            rm -f "${REPO_DIR}/secret.yaml" || true
+            rm -f "${REPO_DIR}/new-cert.pem" || true
+            """
         }
         success {
             script {
@@ -211,7 +227,7 @@ pipeline {
                         <p>Build failed.</p>
                         <p><b>Last errors:</b></p>
                         <pre>${errorLog}</pre>
-                        <p><b>Full logs:</b> <a href="${env.BUILD_URL}artifact/logs/">Download</a></p>
+                        <p><b>Full logs:</b> <a href="${env.BUILD_URL}artifact/artifacts/logs/">Download</a></p>
                         """,
                         to: 'amrelabbasy2003@gmail.com',
                         mimeType: 'text/html'
