@@ -72,23 +72,29 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
 ### 2. Amazon EKS
 
 - Create an **EKS cluster** using `eksctl` or the AWS Console.
+  
   ![WhatsApp Image 2025-05-08 at 21 37 43_1ae09569](https://github.com/user-attachments/assets/f08dd208-4880-4267-960d-eea9e0bc6033)
 
 - Ensure the cluster is accessible via `kubectl`.
 - Deploy the **Sealed Secrets controller**:
+  
   `kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.25.0/controller.yaml`
 
 
 #### Configure AWS Credentials
    - Run the following command to set up your AWS credentials:
+     
      `aws configure`
       Enter your AWS Access Key, AWS Secret Key, Region, and Output format when prompted.
    - Update kubeconfig for EKS:
+     
       `aws eks update-kubeconfig --name python-app-cluster --region us-west-2`
    - Deploy the Sealed Secrets controller:
+     
      `kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.25.0/controller.yaml`
    - Verify the Deployment:
      `kubectl get pods -n kube-system`
+     
      ![WhatsApp Image 2025-05-08 at 21 40 34_f5d1c758](https://github.com/user-attachments/assets/11243cce-34ca-4450-b938-1a0fd893f3c6)
 
 
