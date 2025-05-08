@@ -104,10 +104,11 @@ The project is built using a **CI/CD pipeline** consisting of:
      1. Trigger: Developer triggers a job or webhook from GitHub.
      - Automatically triggered via GitHub webhook push events using `githubPush()`.
      2. Fetch Cert: Jenkins fetches the latest public certificate from the Sealed Secrets controller.
-     `kubeseal --fetch-cert --controller-namespace kube-system --controller-name sealed-secrets-controller > new-cert.pem`
+       `kubeseal --fetch-cert --controller-namespace kube-system --controller-name sealed-secrets-controller > new-cert.pem`
      3. Decrypt + Re-encrypt: Each secret is decrypted and re-encrypted using the new cert.
      4. Push Changes: Re-encrypted secrets are pushed to the sealedsecrets-reencrypted/ folder in GitHub.
      5. ArgoCD Sync: ArgoCD auto-syncs from GitHub → EKS applies updated secrets.
+     6. Post Build Actions.
 
    Each stage should be properly monitored, with any issues logged and reported.
 
@@ -139,5 +140,62 @@ The project is built using a **CI/CD pipeline** consisting of:
 ### jenkins-build-artifacts
   ![WhatsApp Image 2025-05-08 at 19 10 53_1a75c8b7](https://github.com/user-attachments/assets/16f0d888-58e1-47fc-ad64-be922824e5ed)
 
+
+## Authentication & Security
+ ### Kubernetes 
+   - Use sealed secrets to ensure only the controller can decrypt the secrets
+   - Limit kubeseal access to CI-only environments
+
+ ### GitHub
+   - Store tokens/keys in Jenkins as secrets
+
+ ### Jenkins
+   - Rotate stored credentials periodically
+   - Isolate this pipeline in a folder with limited access
+
+ ### ArgoCD:
+   - Enable SSO or role-based access
+   - Limit write access to only sync and read secrets
+   - 
+
+## Configuring ArgoCD and Connecting to GitHub Repository
+
+To enable GitOps with ArgoCD, follow these steps to connect your GitHub repository containing Kubernetes manifests:
+
+### Step 1: Login to ArgoCD Web UI
+
+- Navigate to the ArgoCD Web UI (`http://localhost:8082`)  
+- Login using the admin credentials
+
+### Step 2: Connect GitHub Repository
+
+1. In the left sidebar, go to **Settings > Repositories**
+2. Click **Connect Repo using HTTPS**
+3. Fill the details:
+
+- **Repository URL**: `https://github.com/amrelabbasy11/Sealedsecrets-Auto-Reencrypt.git`
+- **Username**: Your GitHub username like `amrelabbasy11`
+- **Password/Token**: Your GitHub personal access token (with `repo` permission)
+
+### Step 3: Create a New Application
+
+1. Go to **Applications > New App**
+2. Fill in:
+
+- **Application Name**: `sealedsecrets-app`
+- **Project**: `default`
+- **Sync Policy**: Manual or Automatic (recommended: Automatic)
+- **Repository URL**: Same as above
+- **Revision**: `main`
+- **Path**: Path inside the repo (`sealedsecrets-reencrypted`)
+
+### Step 4: Sync the Application
+
+- Click the newly created app → Click **Sync**
+- It will deploy the resources defined in your repo to the cluster
+
+### Result & sealedsecrets-app.yaml
+- Once configured, every change pushed by Jenkins to the GitHub repository will automatically be synced by ArgoCD (if auto-sync is enabled).
+![WhatsApp Image 2025-05-08 at 23 11 41_87040ca4](https://github.com/user-attachments/assets/4c5d57bc-6c6c-4819-8495-896bb58f2a8d)
 
 
