@@ -13,7 +13,6 @@ pipeline {
         AWS_REGION = 'eu-north-1'
         CLUSTER_NAME = 'my-eks-cluster'
         KUBECONFIG = "${env.HOME}/.kube/config"
-        // Add logging directory
         LOG_DIR = "${env.WORKSPACE}/logs"
     }
 
@@ -22,7 +21,9 @@ pipeline {
             steps {
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: AWS_CREDENTIALS
+                    credentialsId: AWS_CREDENTIALS,
+                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
                 ]]) {
                     script {
                         sh '''
@@ -34,7 +35,6 @@ pipeline {
                         '''
                     }
                 }
-                // Initialize logging
                 sh "mkdir -p ${LOG_DIR}"
             }
         }
@@ -68,7 +68,7 @@ pipeline {
                     kubectl wait -n sealed-secrets \
                         --for=condition=ready pod \
                         -l app.kubernetes.io/name=sealed-secrets \
-                        --timeout=120s > ${LOG_DIR}/controller-status.log 2>&1
+                        --timeout=120s > ${LOG_DIR}/controller-status.log 2>&1 || true
                     """
                 }
             }
@@ -94,11 +94,12 @@ pipeline {
         stage('Extract and Re-seal Secrets') {
             steps {
                 script {
-                    // Parallel processing for large clusters
-                    def namespaces = sh(script: 'kubectl get ns -o jsonpath="{.items[*].metadata.name}"', returnStdout: true).trim().split()
-                    def secretCount = 0
-                    def errorCount = 0
+                    // Initialize counters as environment variables so they persist
+                    env.SECRET_COUNT = 0
+                    env.ERROR_COUNT = 0
 
+                    def namespaces = sh(script: 'kubectl get ns -o jsonpath="{.items[*].metadata.name}"', returnStdout: true).trim().split()
+                    
                     namespaces.each { ns ->
                         try {
                             def secrets = sh(script: "kubectl get sealedsecrets -n ${ns} -o name", returnStdout: true).trim()
@@ -116,10 +117,10 @@ pipeline {
                                             > sealedsecrets-reencrypted/${ns}-${secretName}.yaml 2>> ${LOG_DIR}/reencryption-errors.log
                                         rm -f secret.yaml
                                         """
-                                        secretCount++
+                                        env.SECRET_COUNT = env.SECRET_COUNT.toInteger() + 1
                                     } catch (Exception e) {
                                         echo "[ERROR] Failed to process ${ns}/${secret}: ${e}" >> ${LOG_DIR}/errors.log
-                                        errorCount++
+                                        env.ERROR_COUNT = env.ERROR_COUNT.toInteger() + 1
                                     }
                                 }
                             }
@@ -128,12 +129,11 @@ pipeline {
                         }
                     }
 
-                    // Generate summary report
                     sh """
                     echo "Re-encryption Summary:" > ${LOG_DIR}/summary.log
                     echo "=====================" >> ${LOG_DIR}/summary.log
-                    echo "Total secrets processed: ${secretCount}" >> ${LOG_DIR}/summary.log
-                    echo "Total errors: ${errorCount}" >> ${LOG_DIR}/summary.log
+                    echo "Total secrets processed: ${env.SECRET_COUNT}" >> ${LOG_DIR}/summary.log
+                    echo "Total errors: ${env.ERROR_COUNT}" >> ${LOG_DIR}/summary.log
                     echo "Details in ${LOG_DIR}/reencryption.log" >> ${LOG_DIR}/summary.log
                     """
                 }
@@ -150,9 +150,12 @@ pipeline {
                     script {
                         sh """
                         cd Sealedsecrets-Auto-Reencrypt
+                        mkdir -p sealedsecrets-reencrypted
                         git add sealedsecrets-reencrypted/ ${LOG_DIR}/
                         if ! git diff-index --quiet HEAD --; then
-                            git commit -m "Auto-reencrypted ${secretCount} SealedSecrets [ci skip]"
+                            git config user.email "amrelabbasy2003@gmail.com"
+                            git config user.name "Jenkins"
+                            git commit -m "Auto-reencrypted ${env.SECRET_COUNT} SealedSecrets [ci skip]"
                             git push https://${GIT_USER}:${GIT_PASS}@github.com/amrelabbasy11/Sealedsecrets-Auto-Reencrypt.git main
                         else
                             echo "No changes to commit" >> ${LOG_DIR}/summary.log
@@ -166,43 +169,51 @@ pipeline {
 
     post {
         always {
-            // Archive all logs and artifacts
             archiveArtifacts artifacts: "${LOG_DIR}/**", allowEmptyArchive: true
             archiveArtifacts artifacts: 'new-cert.pem,sealedsecrets-reencrypted/*.yaml'
-            
-            // Security: Clean up sensitive files
             sh "rm -f secret.yaml new-cert.pem || true"
         }
         success {
             script {
                 def summary = readFile("${LOG_DIR}/summary.log")
-                emailext(
-                    subject: "SUCCESS: Re-encrypted ${secretCount} SealedSecrets",
-                    body: """
-                    <p>Build succeeded!</p>
-                    <p><b>Summary:</b></p>
-                    <pre>${summary}</pre>
-                    <p><b>Console URL:</b> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
-                    """,
-                    to: 'amrelabbasy2003@gmail.com',
-                    mimeType: 'text/html'
-                )
+                echo "Build succeeded!\n${summary}"
+                // Make sure email is configured in Jenkins system settings
+                try {
+                    emailext(
+                        subject: "SUCCESS: Re-encrypted ${env.SECRET_COUNT} SealedSecrets",
+                        body: """
+                        <p>Build succeeded!</p>
+                        <p><b>Summary:</b></p>
+                        <pre>${summary}</pre>
+                        <p><b>Console URL:</b> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
+                        """,
+                        to: 'amrelabbasy2003@gmail.com',
+                        mimeType: 'text/html'
+                    )
+                } catch (Exception e) {
+                    echo "Failed to send email: ${e}"
+                }
             }
         }
         failure {
             script {
                 def errorLog = sh(script: "tail -n 50 ${LOG_DIR}/errors.log || echo 'No error log'", returnStdout: true)
-                emailext(
-                    subject: "FAILED: SealedSecrets Re-encryption",
-                    body: """
-                    <p>Build failed.</p>
-                    <p><b>Last errors:</b></p>
-                    <pre>${errorLog}</pre>
-                    <p><b>Full logs:</b> <a href="${env.BUILD_URL}artifact/logs/">Download</a></p>
-                    """,
-                    to: 'amrelabbasy2003@gmail.com',
-                    mimeType: 'text/html'
-                )
+                echo "Build failed.\nLast errors:\n${errorLog}"
+                try {
+                    emailext(
+                        subject: "FAILED: SealedSecrets Re-encryption",
+                        body: """
+                        <p>Build failed.</p>
+                        <p><b>Last errors:</b></p>
+                        <pre>${errorLog}</pre>
+                        <p><b>Full logs:</b> <a href="${env.BUILD_URL}artifact/logs/">Download</a></p>
+                        """,
+                        to: 'amrelabbasy2003@gmail.com',
+                        mimeType: 'text/html'
+                    )
+                } catch (Exception e) {
+                    echo "Failed to send email: ${e}"
+                }
             }
         }
     }
