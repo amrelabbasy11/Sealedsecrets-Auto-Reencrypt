@@ -85,9 +85,9 @@ pipeline {
                         --controller-name=sealed-secrets-controller \
                         --controller-namespace=sealed-secrets \
                         > ${REPO_DIR}/new-cert.pem 2> ${LOG_DIR}/cert-fetch-errors.log
-                    test -s ${REPO_DIR}/new-cert.pem || { 
+                    test -s ${REPO_DIR}/new-cert.pem || {
                         echo "ERROR: Failed to fetch certificate" | tee -a ${LOG_DIR}/errors.log
-                        exit 1 
+                        exit 1
                     }
                     """
                 }
@@ -101,7 +101,7 @@ pipeline {
                     env.ERROR_COUNT = 0
 
                     def namespaces = sh(script: 'kubectl get ns -o jsonpath="{.items[*].metadata.name}"', returnStdout: true).trim().split()
-                    
+
                     namespaces.each { ns ->
                         try {
                             def secrets = sh(script: "kubectl get sealedsecrets -n ${ns} -o name", returnStdout: true).trim()
@@ -164,9 +164,9 @@ pipeline {
                                 echo "No changes to commit" >> ../logs/summary.log
                             fi
                             '''
+                            // Copy logs into the repo for archiving
+                            sh "cp -r ${LOG_DIR} ${REPO_DIR}/jenkins-logs || true"
                         }
-                        // Copy logs into the repo for archiving
-                        sh "cp -r ${LOG_DIR} ${REPO_DIR}/jenkins-logs || true"
                     }
                 }
             }
