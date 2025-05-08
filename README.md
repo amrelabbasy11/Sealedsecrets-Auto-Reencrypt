@@ -23,6 +23,17 @@
   - Git: For version control of your configurations and the Jenkinsfile.
   - AWS CLI and Credentials: For interacting with your AWS EKS cluster.
 
+## Jenkins Setup
+  ### Connect Jenkins with GitHub and Docker (Important: Since the repository is private, authentication is required):
+   - Configure GitHub credentials in Jenkins to allow access to the private repository.
+   - Set up Docker credentials in Jenkins to push images to Docker Hub.
+
+  ### Create a Pipeline Job:
+   - Set up a new Jenkins pipeline to manage the deployment process.
+
+  ### Use the Provided Jenkinsfile:
+   - Configure the pipeline using the Jenkinsfile script included in this repository.
+
 ## Jenkinsfile Pipeline
   This Jenkins pipeline performs the following steps:
 
@@ -34,3 +45,6 @@
       2. GitHub Personal Access Token (PAT)
       3. AWS Region & EKS Cluster name
       4. Optional: ArgoCD authentication token (for manual sync)
+   
+
+
