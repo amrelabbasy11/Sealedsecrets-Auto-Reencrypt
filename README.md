@@ -97,5 +97,47 @@ The project is built using a **CI/CD pipeline** consisting of:
    - Generate a GitHub PAT (Personal Access Token) or SSH key and add it to Jenkins.
 
 
+## Pipeline Architecture
+  - The Jenkins pipeline will automate the process of re-encrypting SealedSecrets using the latest public key from the Sealed Secrets controller. 
+   It consists of the following  stages:
 
-     
+     1. Trigger: Developer triggers a job or webhook from GitHub.
+     - Automatically triggered via GitHub webhook push events using `githubPush()`.
+     2. Fetch Cert: Jenkins fetches the latest public certificate from the Sealed Secrets controller.
+     `kubeseal --fetch-cert --controller-namespace kube-system --controller-name sealed-secrets-controller > new-cert.pem`
+     3. Decrypt + Re-encrypt: Each secret is decrypted and re-encrypted using the new cert.
+     4. Push Changes: Re-encrypted secrets are pushed to the sealedsecrets-reencrypted/ folder in GitHub.
+     5. ArgoCD Sync: ArgoCD auto-syncs from GitHub → EKS applies updated secrets.
+
+   Each stage should be properly monitored, with any issues logged and reported.
+
+### 2. ⚙️ Pipeline Configuration
+
+- Install required Jenkins plugins:
+  - **Git Plugin**: For interacting with GitHub.
+  - **GitHub Plugin**: For pushing to GitHub.
+  - **Pipeline Plugin**: For defining the pipeline stages.
+  - **SSH Agent Plugin**: For handling SSH key-based authentication.
+  - **Kubernetes CLI Plugin** (optional): For interacting with Kubernetes clusters using `kubectl`.
+    
+#### Logging or Reporting Mechanism
+  - Jenkins Console Logs: Capture all actions in the pipeline with detailed logs.
+  - Error Reporting: Any failures during the re-encryption or sync processes should be logged in Jenkins and reported. For example, you could use the following
+    snippet to log errors:
+     `echo "$(date): Failed to re-encrypt $SECRET_NAME" >> re-encryption-errors.log`
+    
+#### Ensuring the Security of Private Keys
+- While working with private keys, it's essential to ensure their security throughout the process:
+ - Kubernetes Secrets: Store private keys in Kubernetes Secrets and ensure they are encrypted at rest.
+ - Jenkins Credentials Store: Use Jenkins' credentials manager to securely store any private keys needed for the re-encryption process.
+ - RBAC Policies: Ensure that access to the keys is restricted to only those processes and users that absolutely need it. Use Kubernetes RBAC to enforce this within the cluster.
+ - Audit Logs: Enable logging for all interactions with private keys to ensure that access is properly monitored.
+
+### Successful Pipeline Execution
+   ![WhatsApp Image 2025-05-07 at 20 12 17_64fb9900](https://github.com/user-attachments/assets/00f1b299-a8e7-4993-b437-615866606530)
+
+### jenkins-build-artifacts
+  ![WhatsApp Image 2025-05-08 at 19 10 53_1a75c8b7](https://github.com/user-attachments/assets/16f0d888-58e1-47fc-ad64-be922824e5ed)
+
+
+
