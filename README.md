@@ -2,7 +2,22 @@
 
 ##  Overview
 
-This document outlines a proposed feature to enhance the `kubeseal` CLI tool by **automating the re-encryption of all `SealedSecret` resources in a Kubernetes cluster**. This allows seamless rotation of the Sealed Secrets controller's public key without manual secret management.
+This document outlines a proposed feature to enhance the kubeseal CLI tool by automating the re-encryption of all SealedSecret resources in a Kubernetes cluster. This solution facilitates seamless rotation of the Sealed Secrets controller's public key, ensuring the security of secrets without manual intervention. The re-encryption process also ensures that secrets remain securely stored, and private keys are never exposed, offering a secure and efficient method for maintaining secrets in Kubernetes.
+
+The project leverages a CI/CD pipeline to automate and streamline the entire process. The pipeline involves several key components to handle the encryption, logging, error reporting, and synchronization of changes across multiple environments:
+
+### Key Components of the Solution:
+
+- GitHub: The central repository for storing SealedSecrets YAML files. It hosts the versioned configuration files for SealedSecrets and tracks changes made throughout the re-  encryption process.
+- Jenkins: Orchestrates the entire re-encryption process. It automates the following tasks:
+- Pulling the latest changes from the GitHub repository.
+- Fetching the latest public certificate from the SealedSecrets controller.
+- Re-encrypting all SealedSecrets using the updated certificate.
+- Logging the results and tracking any errors or issues during the process.
+- Committing and pushing changes back to the GitHub repository, ensuring version control of encrypted secrets.
+- Sending email notifications on both success and failure, including detailed logs for further analysis.
+- ArgoCD: Syncs the committed changes to the Kubernetes cluster. It ensures that the updated SealedSecrets are deployed across the cluster without manual intervention, maintaining the security and consistency of secrets.
+- EKS (AWS): The target Kubernetes environment where the SealedSecrets are managed and deployed. The solution integrates with Amazon Elastic Kubernetes Service (EKS) to  facilitate smooth interaction with the Kubernetes API and ensures that the re-encrypted secrets are propagated securely.
 
 The project is built using a **CI/CD pipeline** consisting of:
 
