@@ -192,9 +192,57 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
    - Enable SSO or role-based access
    - Limit write access to only sync and read secrets
 
-
 ---
 
+# Email Notification
+To set up email notifications in Jenkins, follow these steps:
+
+1. Access Jenkins System Settings
+   - Log in to your Jenkins dashboard.
+   - Go to Manage Jenkins > System.
+2. Configure SMTP Serve
+    1. Scroll down to the E-mail Notification section.
+
+    2. Fill in the following details:
+        - SMTP Server: smtp.gmail.com
+        - User Name: Your Gmail address (e.g., amrelabbasy2003@gmail.com).
+        - Password: Your Gmail app password (generate one from your Google Account settings if needed).
+        - Use SSL: Enable this option.
+        - SMTP Port: Use 465 for SSL or 587 for TLS.
+   - Note:
+    SSL (Port 465): Encrypts the connection using SSL.
+    TLS (Port 587): Encrypts the connection using TLS (preferred for modern setups).
+   3. Click Apply and Save.
+3. Test Email Configuration
+    1. In the E-mail Notification section, click Test configuration by sending a test email.
+    2. Enter your email address and click Test configuration.
+    3. Ensure you receive a test email to confirm the setup is working.
+
+4. Install the Email Extension Plugin
+    1. Go to Manage Jenkins > Manage Plugins.
+    2. In the Available tab, search for Email Extension Plugin.
+    3. Install the plugin and restart Jenkins if prompted.
+5. Configure Email Notifications in Your Pipeline
+    Add the emailext step in your Jenkinsfile to send email notifications.
+6. Verify Email Notifications
+    1. Run your Jenkins pipeline.
+    2. Check your email inbox for notifications based on the pipeline's success or failure.
+       
+- Note
+  If the email is not sent even after following the steps you mentioned, try adding your email as a credential in Jenkins.         Here’s how you can do it : 
+   Step 1: Add Your Email as a Credential in Jenkins -> Open Jenkins Dashboard -> Go to Jenkins Home -> Click on Manage Jenkins. 
+           Go to Credentials Management
+           Click on Manage Credentials -> Select (Global credentials).
+
+    Add a New Credential
+        Click on Add Credentials.
+        In Kind, select Username and password.
+        Username: Enter your email (e.g., amrelabbasy2003@gmail.com).
+        Password: Enter your email password (or an App Password if using Gmail).
+        ID: Give it an identifier like email-credentials.
+        Click OK to save.
+  
+---
 ## Configuring ArgoCD and Connecting to GitHub Repository
 
 To enable GitOps with ArgoCD, follow these steps to connect your GitHub repository containing Kubernetes manifests:
