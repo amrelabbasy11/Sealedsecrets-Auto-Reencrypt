@@ -62,7 +62,7 @@ pipeline {
                 sh '''
                 echo [INFO] Starting re-encryption process
                 mkdir -p sealedsecrets-reencrypted
-                find . -name "*.sealedsecret" -exec kubeseal --cert new-cert.pem -o yaml --re-encrypt {} > sealedsecrets-reencrypted/$(basename {} .sealedsecret).yaml \;
+                find . -name "*.sealedsecret" -exec kubeseal --cert new-cert.pem -o yaml --re-encrypt {} > sealedsecrets-reencrypted/$(basename {} .sealedsecret).yaml ;
                 '''
             }
         }
@@ -83,7 +83,6 @@ pipeline {
             }
         }
     }
-
     post {
         always {
             archiveArtifacts allowEmptyArchive: true, artifacts: '**/sealedsecrets-reencrypted/*.yaml'
