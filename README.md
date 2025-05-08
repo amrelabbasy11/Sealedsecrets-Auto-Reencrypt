@@ -19,13 +19,6 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
 - ArgoCD: Syncs the committed changes to the Kubernetes cluster. It ensures that the updated SealedSecrets are deployed across the cluster without manual intervention, maintaining the security and consistency of secrets.
 - EKS (AWS): The target Kubernetes environment where the SealedSecrets are managed and deployed. The solution integrates with Amazon Elastic Kubernetes Service (EKS) to  facilitate smooth interaction with the Kubernetes API and ensures that the re-encrypted secrets are propagated securely.
 
-The project is built using a **CI/CD pipeline** consisting of:
-
-- **GitHub**: Stores the SealedSecrets
-- **Jenkins**: Automates re-encryption, commits, and push
-- **ArgoCD**: Syncs changes to the Kubernetes cluster
-- **EKS (AWS)**: The target Kubernetes environment
-
 ---
 
 ## Goals
