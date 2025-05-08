@@ -71,8 +71,6 @@ The project is built using a **CI/CD pipeline** consisting of:
 - Deploy the **Sealed Secrets controller**:
   `kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.25.0/controller.yaml`
 
-## AWS CLI Configuration
-
 #### Configure AWS Credentials
    - Run the following command to set up your AWS credentials:
      `aws configure`
@@ -85,7 +83,18 @@ The project is built using a **CI/CD pipeline** consisting of:
      `kubectl get pods -n kube-system`
      ![WhatsApp Image 2025-05-08 at 21 40 34_f5d1c758](https://github.com/user-attachments/assets/11243cce-34ca-4450-b938-1a0fd893f3c6)
 
+ ### 3. ArgoCD
+   - Install ArgoCD on your Kubernetes cluster.
+   - Follow ArgoCD documentation to configure access:
+     `kubectl create namespace argocd`
+     `kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml`
+   - Configure a new ArgoCD app that watches your GitHub repo.
+   - ArgoCD should auto-sync sealedsecrets-reencrypted/ to the cluster.
 
+ ### 4. GitHub
+   - Store your SealedSecrets in a repository.
+   - Create a target folder for updated secrets.
+   - Generate a GitHub PAT (Personal Access Token) or SSH key and add it to Jenkins.
 
 
 
