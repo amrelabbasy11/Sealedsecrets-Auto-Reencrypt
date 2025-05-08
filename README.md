@@ -1,7 +1,8 @@
 # Sealedsecrets-Auto-Reencrypt
 
 ## Overview
-This project automates the process of fetching the latest public key from the Sealed Secrets controller on an AWS EKS cluster and re-sealing all existing SealedSecret Kubernetes objects using the new public key. It integrates GitHub, Jenkins, ArgoCD, and EKS to ensure a secure, fully automated GitOps workflow.
+  This document outlines a proposed feature to enhance the `kubeseal` command-line interface (CLI) with the capability to automatically re-encrypt all existing SealedSecrets within   a Kubernetes cluster. This functionality aims to simplify the process of rotating the Sealed Secrets controller's public key and ensuring all secrets are encrypted with the         latest key, regardless of the underlying Kubernetes distribution. This feature will streamline security practices by automating a critical maintenance task for 
+  SealedSecrets users.
 
 ## Project Layout
   - infrastructure/argocd/sealedsecrets-app.yaml: File for Argo CD, a tool to automatically deploy and manage your Sealed Secrets in your Kubernetes setup.
@@ -11,4 +12,15 @@ This project automates the process of fetching the latest public key from the Se
   - new-cert.pem: The new public key used to lock up your secrets again during the re-encryption process in Jenkins.
   - private-key.pem: Possibly a key used for managing the main secret key (master.key) or other security tasks.
   - public-cert.pem: Similar to private-key.pem, likely involved in managing the security keys.
-  - reencrypt.sh: A script you might run manually to help with the re-encryption, similar to what Jenkins does automatically
+  - reencrypt.sh: A script you might run manually to help with the re-encryption, similar to what Jenkins does automatically.
+
+## Dependencies
+  - Kubernetes Cluster: To run the Sealed Secrets controller and deploy the re-encrypted secrets.
+  - Sealed Secrets Controller: Installed in the Kubernetes cluster to manage SealedSecret resources.
+  - kubeseal CLI: Used in the Jenkins pipeline (and potentially reencrypt.sh) to fetch the certificate and seal/re-encrypt secrets.
+  - Argo CD: Managing the deployment of Sealed Secrets configurations.
+  - Jenkins: Automation server to run the pipeline.
+  - Git: For version control of your configurations and the Jenkinsfile.
+  - AWS CLI and Credentials: (Based on your Jenkinsfile) For interacting with your AWS EKS cluster.
+
+## Jenkinsfile Pipeline
