@@ -27,10 +27,10 @@
   This Jenkins pipeline performs the following steps:
 
   ### Triggers
-  Automatically triggered via GitHub webhook push events using githubPush().
-  Environment Configuration
-  Jenkins credentials store:
-  AWS Access Key ID & Secret Access Key
-  GitHub Personal Access Token (PAT)
-  AWS Region & EKS Cluster name
-  Optional: ArgoCD authentication token (for manual sync)
+  Automatically triggered via GitHub webhook push events using `githubPush()`.
+  ### Environment Configuration
+  - Jenkins credentials store:
+      1. AWS Access Key ID & Secret Access Key
+      2. GitHub Personal Access Token (PAT)
+      3. AWS Region & EKS Cluster name
+      4. Optional: ArgoCD authentication token (for manual sync)
