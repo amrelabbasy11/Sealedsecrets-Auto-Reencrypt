@@ -217,6 +217,8 @@ To set up email notifications in Jenkins, follow these steps:
     1. In the E-mail Notification section, click Test configuration by sending a test email.
     2. Enter your email address and click Test configuration.
     3. Ensure you receive a test email to confirm the setup is working.
+     - Test Image : 
+    ![WhatsApp Image 2025-05-09 at 01 31 40_53477d63](https://github.com/user-attachments/assets/79ce7068-53f8-44b6-9320-22bae4543ea3)
 
 4. Install the Email Extension Plugin
     1. Go to Manage Jenkins > Manage Plugins.
@@ -227,7 +229,10 @@ To set up email notifications in Jenkins, follow these steps:
 6. Verify Email Notifications
     1. Run your Jenkins pipeline.
     2. Check your email inbox for notifications based on the pipeline's success or failure.
-       
+       - Success Image:
+         ![WhatsApp Image 2025-05-09 at 01 34 22_5c497063](https://github.com/user-attachments/assets/fd69c7fb-b1af-46c3-80da-31fc776fbb30)
+
+
 - Note
   If the email is not sent even after following the steps you mentioned, try adding your email as a credential in Jenkins.         Here’s how you can do it : 
    Step 1: Add Your Email as a Credential in Jenkins -> Open Jenkins Dashboard -> Go to Jenkins Home -> Click on Manage Jenkins. 
