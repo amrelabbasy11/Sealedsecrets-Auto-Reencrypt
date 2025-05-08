@@ -102,7 +102,7 @@ pipeline {
             }
         }
 
-        stage('Extract and Re-seal Secrets') {
+        stage('Decrypt + Re-encrypt') {
             steps {
                 script {
                     env.SECRET_COUNT = 0
