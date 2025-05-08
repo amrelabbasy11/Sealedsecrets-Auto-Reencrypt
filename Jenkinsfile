@@ -1,33 +1,149 @@
+properties([
+    pipelineTriggers([
+        githubPush()  // Trigger on GitHub push event
+    ])
+])
+
 pipeline {
     agent any
 
     environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id') // Set the AWS credentials
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key') // Set the AWS secret key
+        GIT_CREDENTIALS = 'github-token' // GitHub credentials ID
+        AWS_CREDENTIALS = 'aws-credentials' // AWS credentials ID
+        AWS_REGION = 'eu-north-1'   // AWS region for your EKS cluster
+        CLUSTER_NAME = 'my-eks-cluster'   // EKS cluster name
+        KUBECONFIG = "${env.HOME}/.kube/config"  // Kubeconfig location
     }
 
     stages {
-        stage('Checkout SCM') {
+        stage('Setup Environment') {
             steps {
-                checkout scm
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: AWS_CREDENTIALS
+                ]]) {
+                    script {
+                        // Setup AWS CLI for accessing EKS and configuring kubectl
+                        sh '''
+                        mkdir -p ~/.kube
+                        aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+                        aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+                        aws configure set region ${AWS_REGION}
+                        aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_REGION}
+                        '''
+                    }
+                }
             }
         }
 
-        stage('Re-Encrypt SealedSecrets') {
+        stage('Git Clone') {
             steps {
-                sh '''
-                echo [INFO] Starting re-encryption process
-                mkdir -p sealedsecrets-reencrypted
-                find . -name "*.sealedsecret" -exec kubeseal --cert new-cert.pem -o yaml --re-encrypt {} > sealedsecrets-reencrypted/$(basename {} .sealedsecret).yaml ;
-                '''
+                withCredentials([usernamePassword(
+                    credentialsId: GIT_CREDENTIALS,
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_PASS'
+                )]) {
+                    script {
+                        def repoDir = 'Sealedsecrets-Auto-Reencrypt'
+                        if (fileExists(repoDir)) {
+                            dir(repoDir) {
+                                // Fetch latest updates from the repo
+                                sh 'git fetch --all'
+                                sh 'git reset --hard origin/main'
+                            }
+                        } else {
+                            // Clone the repository if it doesn't exist
+                            sh "git clone https://${GIT_USER}:${GIT_PASS}@github.com/amrelabbasy11/Sealedsecrets-Auto-Reencrypt.git"
+                        }
+                    }
+                }
             }
         }
 
-        stage('Post Actions') {
+        stage('Verify Sealed Secrets Controller') {
             steps {
                 script {
-                    // Ensure the artifacts are archived after all steps
-                    archiveArtifacts allowEmptyArchive: true, artifacts: '**/sealedsecrets-reencrypted/*.yaml', onlyIfSuccessful: true
+                    // Ensure Sealed Secrets controller is ready
+                    sh '''
+                    kubectl wait -n sealed-secrets \
+                        --for=condition=ready pod \
+                        -l app.kubernetes.io/name=sealed-secrets \
+                        --timeout=120s
+                    '''
+                }
+            }
+        }
+
+        stage('Fetch New Public Certificate') {
+            steps {
+                script {
+                    // Fetch the latest certificate from Sealed Secrets controller
+                    sh '''
+                    kubeseal --fetch-cert \
+                        --controller-name=sealed-secrets-controller \
+                        --controller-namespace=sealed-secrets \
+                        > new-cert.pem
+                    test -s new-cert.pem || { echo "ERROR: Failed to fetch certificate"; exit 1; }
+                    '''
+                }
+            }
+        }
+
+        stage('Extract and Re-seal Secrets') {
+            steps {
+                script {
+                    // Re-seal all existing secrets with the new certificate
+                    sh '''
+                    mkdir -p sealedsecrets-reencrypted
+
+                    for ss in $(kubectl get sealedsecrets -A -o custom-columns=":metadata.namespace,:metadata.name" --no-headers); do
+                        ns=$(echo $ss | awk '{print $1}')
+                        name=$(echo $ss | awk '{print $2}')
+
+                        echo "Processing $ns/$name"
+
+                        secret=$(kubectl get secret "$name" -n "$ns" -o yaml 2>/dev/null || true)
+
+                        if [ -z "$secret" ]; then
+                            echo "Secret $ns/$name not found, skipping"
+                            continue
+                        fi
+
+                        echo "$secret" > secret.yaml
+
+                        kubeseal --cert new-cert.pem \
+                            --format yaml \
+                            --namespace "$ns" \
+                            < secret.yaml \
+                            > sealedsecrets-reencrypted/${ns}-${name}.yaml
+
+                        rm -f secret.yaml
+                    done
+                    '''
+                }
+            }
+        }
+
+        stage('Commit Changes') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: GIT_CREDENTIALS,
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_PASS'
+                )]) {
+                    script {
+                        // Commit the re-encrypted sealed secrets back to the GitHub repo
+                        sh '''
+                        cd Sealedsecrets-Auto-Reencrypt
+                        git add sealedsecrets-reencrypted/
+                        if ! git diff-index --quiet HEAD --; then
+                            git commit -m "Auto-reencrypted SealedSecrets with latest cert [ci skip]"
+                            git push https://${GIT_USER}:${GIT_PASS}@github.com/amrelabbasy11/Sealedsecrets-Auto-Reencrypt.git main
+                        else
+                            echo "No changes to commit"
+                        fi
+                        '''
+                    }
                 }
             }
         }
@@ -35,13 +151,36 @@ pipeline {
 
     post {
         always {
-            echo 'Pipeline finished.'
+            // Archive log files and re-encrypted secrets
+            archiveArtifacts artifacts: '/*.log', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'new-cert.pem,sealedsecrets-reencrypted/*.yaml'
         }
         success {
-            echo 'Pipeline completed successfully.'
+            // Send success email on build completion
+            emailext(
+                subject: "SUCCESS: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
+                body: """
+                <p>Build succeeded!</p>
+                <p><b>Console URL:</b> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
+                """,
+                to: 'amrelabbasy2003@gmail.com',
+                mimeType: 'text/html'
+            )
         }
         failure {
-            echo 'Pipeline failed.'
+            // Send failure email on build failure
+            emailext(
+                subject: "FAILED: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
+                body: """
+                <p>Build failed. Check logs:</p>
+                <p><a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
+                <p><b>Error snippet:</b><br>
+                ${currentBuild.rawBuild.getLog(100).join('\n')}
+                </p>
+                """,
+                to: 'amrelabbasy2003@gmail.com',
+                mimeType: 'text/html'
+            )
         }
     }
 }
