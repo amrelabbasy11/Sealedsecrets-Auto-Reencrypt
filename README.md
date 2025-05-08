@@ -67,7 +67,6 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
   - Store `kubeconfig` as a secret file in Jenkins
 - Add Sealed Secrets public cert fetching logic in pipeline script
 
----
 
 ### 2. Amazon EKS
 
@@ -77,7 +76,8 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
 - Ensure the cluster is accessible via `kubectl`.
 - Deploy the **Sealed Secrets controller**:
   `kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.25.0/controller.yaml`
----
+
+
 #### Configure AWS Credentials
    - Run the following command to set up your AWS credentials:
      `aws configure`
@@ -89,7 +89,8 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
    - Verify the Deployment:
      `kubectl get pods -n kube-system`
      ![WhatsApp Image 2025-05-08 at 21 40 34_f5d1c758](https://github.com/user-attachments/assets/11243cce-34ca-4450-b938-1a0fd893f3c6)
----
+
+
  ### 3. ArgoCD
    - Install ArgoCD on your Kubernetes cluster.
    - Follow ArgoCD documentation to configure access:
@@ -97,14 +98,14 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
      `kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml`
    - Configure a new ArgoCD app that watches your GitHub repo.
    - ArgoCD should auto-sync sealedsecrets-reencrypted/ to the cluster.
----
+
+
  ### 4. GitHub
    - Store your SealedSecrets in a repository.
    - Create a target folder for updated secrets.
    - Generate a GitHub PAT (Personal Access Token) or SSH key and add it to Jenkins.
 
 ---
-
 
 ## Pipeline Architecture
   - The Jenkins pipeline will automate the process of re-encrypting SealedSecrets using the latest public key from the Sealed Secrets controller. 
@@ -120,7 +121,7 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
      6. Post Build Actions.
 
    Each stage should be properly monitored, with any issues logged and reported.
----
+
 ### 2. Pipeline Configuration
 
 - Install required Jenkins plugins:
@@ -129,13 +130,13 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
   - **Pipeline Plugin**: For defining the pipeline stages.
   - **SSH Agent Plugin**: For handling SSH key-based authentication.
   - **Kubernetes CLI Plugin** (optional): For interacting with Kubernetes clusters using `kubectl`.
----    
+
 #### Logging or Reporting Mechanism
   - Jenkins Console Logs: Capture all actions in the pipeline with detailed logs.
   - Error Reporting: Any failures during the re-encryption or sync processes should be logged in Jenkins and reported. For example, you could use the following
     snippet to log errors:
      `echo "$(date): Failed to re-encrypt $SECRET_NAME" >> re-encryption-errors.log`
----   
+
 #### Ensuring the Security of Private Keys
 - The pipeline logs the entire re-encryption process, including detailed information on each secret processed, warnings, errors, and a summary of the re-encryption status.        These logs are saved in the logs directory and are part of the artifacts archived at the end of the build. Logs are also included in the email notifications for
   both success and failure, allowing detailed tracking of the re-encryption process.
@@ -152,7 +153,7 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
     `echo "Re-encryption Summary:" > ${LOG_DIR}/summary.log`
     `echo "Total secrets processed: ${totalSecretsProcessed}" >> ${LOG_DIR}/summary.log`
     `echo "Total errors encountered: ${totalErrors}" >> ${LOG_DIR}/summary.log`
----
+  
 #### Security of Private Keys
 - The private keys used by the SealedSecrets controller are securely handled within the Kubernetes cluster and are never exposed in the pipeline. Only the public certificate      is fetched for re-encryption. Additionally, sensitive credentials (AWS and GitHub) are securely managed using Jenkins' credential-binding mechanisms.
 - command that i used :
@@ -160,15 +161,15 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
          --controller-name=sealed-secrets-controller \
          --controller-namespace=sealed-secrets \
          > ${REPO_DIR}/new-cert.pem`  
----
+
 #### Handling Large Numbers of SealedSecrets
 - The pipeline handles SealedSecrets efficiently, processing each namespace and its secrets sequentially. For large datasets, it can be further optimized by
   introducing parallelization to handle multiple namespaces or secrets at once.
 
----
 
 ### Successful Pipeline Execution
    ![WhatsApp Image 2025-05-07 at 20 12 17_64fb9900](https://github.com/user-attachments/assets/00f1b299-a8e7-4993-b437-615866606530)
+
 
 ### jenkins-build-artifacts
   ![WhatsApp Image 2025-05-08 at 19 10 53_1a75c8b7](https://github.com/user-attachments/assets/16f0d888-58e1-47fc-ad64-be922824e5ed)
