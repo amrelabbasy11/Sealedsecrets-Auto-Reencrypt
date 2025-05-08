@@ -1,8 +1,29 @@
 # Sealedsecrets-Auto-Reencrypt
 
-## Overview
-  This document outlines a proposed feature to enhance the `kubeseal` command-line interface (CLI) with the capability to automatically re-encrypt all existing SealedSecrets within   a Kubernetes cluster. This functionality aims to simplify the process of rotating the Sealed Secrets controller's public key and ensuring all secrets are encrypted with the         latest key, regardless of the underlying Kubernetes distribution. This feature will streamline security practices by automating a critical maintenance task for 
-  SealedSecrets users.
+This document outlines a proposed feature to enhance the `kubeseal` command-line interface (CLI) with the capability to automatically re-encrypt all existing `SealedSecret` Kubernetes objects within a cluster. This functionality aims to simplify the process of rotating the Sealed Secrets controller's public key and ensuring that all secrets are encrypted using the latest certificate—regardless of the Kubernetes distribution or environment.
+
+The project introduces a CI/CD pipeline that connects **GitHub**, **Jenkins**, **EKS**, and **ArgoCD**. It automates the following:
+
+- Fetching the latest public certificate from the Sealed Secrets controller
+- Re-encrypting all sealed secrets
+- Committing changes to GitHub
+- Synchronizing updates to the cluster using ArgoCD
+
+This feature will **streamline secret rotation**, strengthen security hygiene, and reduce the operational burden on DevOps teams.
+
+## Goals
+
+- Automate the re-encryption of all SealedSecrets using the latest public certificate
+- Integrate the process into a Jenkins CI/CD pipeline
+- Store updated secrets in GitHub in a secure path (`sealedsecrets-reencrypted/`)
+- Sync changes to the Kubernetes cluster using ArgoCD
+- Reduce human error and increase secret rotation reliability
+
+  
+## Plan Diagram 
+![WhatsApp Image 2025-05-07 at 21 19 44_3360f69c](https://github.com/user-attachments/assets/9f5f549f-e6c4-449e-aa7f-03f1e74b02b2)
+
+
 
 ## Project Layout
   - infrastructure/argocd/sealedsecrets-app.yaml: File for Argo CD, a tool to automatically deploy and manage your Sealed Secrets in your Kubernetes setup.
@@ -14,6 +35,8 @@
   - public-cert.pem: Similar to private-key.pem, likely involved in managing the security keys.
   - reencrypt.sh: A script you might run manually to help with the re-encryption, similar to what Jenkins does automatically.
 
+    
+
 ## Dependencies
   - Kubernetes Cluster: To run the Sealed Secrets controller and deploy the re-encrypted secrets.
   - Sealed Secrets Controller: Installed in the Kubernetes cluster to manage SealedSecret resources.
@@ -22,6 +45,8 @@
   - Jenkins: Automation server to run the pipeline.
   - Git: For version control of your configurations and the Jenkinsfile.
   - AWS CLI and Credentials: For interacting with your AWS EKS cluster.
+
+    
 
 ## Jenkins Setup
   ### Connect Jenkins with GitHub and Docker (Important: Since the repository is private, authentication is required):
@@ -34,9 +59,10 @@
   ### Use the Provided Jenkinsfile:
    - Configure the pipeline using the Jenkinsfile script included in this repository.
 
+     
+
 ## Jenkinsfile Pipeline
   This Jenkins pipeline performs the following steps:
-
   ### Triggers
   Automatically triggered via GitHub webhook push events using `githubPush()`.
   ### Environment Configuration
