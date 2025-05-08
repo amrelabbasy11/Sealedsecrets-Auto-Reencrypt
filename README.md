@@ -31,6 +31,7 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
 
   
 ## Plan Diagram 
+
 ![WhatsApp Image 2025-05-07 at 21 19 44_3360f69c](https://github.com/user-attachments/assets/9f5f549f-e6c4-449e-aa7f-03f1e74b02b2)
 
 ---
@@ -94,8 +95,10 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
  ### 3. ArgoCD
    - Install ArgoCD on your Kubernetes cluster.
    - Follow ArgoCD documentation to configure access:
+     
      `kubectl create namespace argocd`
      `kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml`
+     
    - Configure a new ArgoCD app that watches your GitHub repo.
    - ArgoCD should auto-sync sealedsecrets-reencrypted/ to the cluster.
 
@@ -114,6 +117,7 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
      ### Trigger: Developer triggers a job or webhook from GitHub.
      - Automatically triggered via GitHub webhook push events using `githubPush()`.
      - Commands:
+     - 
           `properties([
                 pipelineTriggers([
                     githubPush()
@@ -121,22 +125,27 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
             ])`
 
      ### Fetch Cert: Jenkins fetches the latest public certificate from the Sealed Secrets controller.
+    
        `kubeseal --fetch-cert --controller-namespace kube-system --controller-name sealed-secrets-controller > new-cert.pem`
 
      ### Decrypt + Re-encrypt: Each secret is decrypted and re-encrypted using the new cert.
        - Command used:
-                  `kubeseal \
+         
+         `kubeseal \
             --re-encrypt \
             --controller-name sealed-secrets-controller \
             --controller-namespace kube-system \
             --cert new-sealed-secrets-cert.pem \`
            ` < extracted/my-secret.yaml \`
            ` > reencrypted/my-secret.yaml`
-        - The Output from This Stage:
+    
+       - The Output from This Stage:
+       - 
          ![WhatsApp Image 2025-05-09 at 02 14 57_9bae1012](https://github.com/user-attachments/assets/61813aed-de6d-4ce6-91ed-aa91cc09a105)
  
      ### Commit changes.
        - Commands used:
+         
               `- name: Commit Re-sealed Secrets
                   run: |
                     git config --global user.name "github-actions[bot]"
@@ -146,6 +155,7 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
          
      ### Push Changes: Re-encrypted secrets are pushed to the sealedsecrets-reencrypted/ folder in GitHub.
        - Commands Used:
+         
             `name: Push Changes
              run: git push origin ${{ github.head_ref }}`
 
