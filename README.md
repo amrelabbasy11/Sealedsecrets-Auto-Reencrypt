@@ -111,14 +111,46 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
   - The Jenkins pipeline will automate the process of re-encrypting SealedSecrets using the latest public key from the Sealed Secrets controller. 
    It consists of the following  stages:
 
-     1. Trigger: Developer triggers a job or webhook from GitHub.
+     ### Trigger: Developer triggers a job or webhook from GitHub.
      - Automatically triggered via GitHub webhook push events using `githubPush()`.
-     2. Fetch Cert: Jenkins fetches the latest public certificate from the Sealed Secrets controller.
+     - Commands:
+          `properties([
+                pipelineTriggers([
+                    githubPush()
+                ])
+            ])`
+
+     ### Fetch Cert: Jenkins fetches the latest public certificate from the Sealed Secrets controller.
        `kubeseal --fetch-cert --controller-namespace kube-system --controller-name sealed-secrets-controller > new-cert.pem`
-     3. Decrypt + Re-encrypt: Each secret is decrypted and re-encrypted using the new cert.
-     4. Push Changes: Re-encrypted secrets are pushed to the sealedsecrets-reencrypted/ folder in GitHub.
-     5. ArgoCD Sync: ArgoCD auto-syncs from GitHub → EKS applies updated secrets.
-     6. Post Build Actions.
+
+     ### Decrypt + Re-encrypt: Each secret is decrypted and re-encrypted using the new cert.
+       - Command used:
+                  `kubeseal \
+            --re-encrypt \
+            --controller-name sealed-secrets-controller \
+            --controller-namespace kube-system \
+            --cert new-sealed-secrets-cert.pem \`
+           ` < extracted/my-secret.yaml \`
+           ` > reencrypted/my-secret.yaml`
+        - The Output from This Stage:
+         ![WhatsApp Image 2025-05-09 at 02 14 57_9bae1012](https://github.com/user-attachments/assets/61813aed-de6d-4ce6-91ed-aa91cc09a105)
+ 
+     ### Commit changes.
+       - Commands used:
+              `- name: Commit Re-sealed Secrets
+                  run: |
+                    git config --global user.name "github-actions[bot]"
+                    git config --global user.email "github-actions[bot]@users.noreply.github.com"
+                    git add sealedsecrets-reencrypted/
+                    git commit -m "Re-seal secrets using new certificate" `
+         
+     ### Push Changes: Re-encrypted secrets are pushed to the sealedsecrets-reencrypted/ folder in GitHub.
+       - Commands Used:
+            `name: Push Changes
+             run: git push origin ${{ github.head_ref }}`
+
+     ### ArgoCD Sync: ArgoCD auto-syncs from GitHub → EKS applies updated secrets.
+     ### Post Build Actions.
 
    Each stage should be properly monitored, with any issues logged and reported.
 
@@ -168,7 +200,7 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
 
 
 ### Successful Pipeline Execution
-   ![WhatsApp Image 2025-05-07 at 20 12 17_64fb9900](https://github.com/user-attachments/assets/00f1b299-a8e7-4993-b437-615866606530)
+ ![WhatsApp Image 2025-05-09 at 01 59 29_ceb55f41](https://github.com/user-attachments/assets/71546b1d-120f-4510-829e-68e9e9ed5ba8)
 
 
 ### jenkins-build-artifacts
