@@ -64,8 +64,7 @@ In the next sections, I'll break down how this works in practice, step by step, 
   - Email Extension Plugin
   - Mailer Plugin
 
-#### Configuration
-
+- Configuration
 - Add GitHub credentials (Personal Access Token or SSH key)
 - Add Kubernetes CLI credentials:
 - Store `kubeconfig` as a secret file in Jenkins
