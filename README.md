@@ -2,12 +2,15 @@
 
 ##  Overview
 
-This document outlines a proposed feature to enhance the kubeseal CLI tool by automating the re-encryption of all SealedSecret resources in a Kubernetes cluster. This solution facilitates seamless rotation of the Sealed Secrets controller's public key, ensuring the security of secrets without manual intervention. The re-encryption process also ensures that secrets remain securely stored, and private keys are never exposed, offering a secure and efficient method for maintaining secrets in Kubernetes.
+When building applications like websites that connect to databases, one of the most common challenges is managing sensitive data like usernames and passwords. If these credentials are stored directly in the code or a public repository (like on GitHub), anyone who has access to the repository can also access those credentials. This is a major security risk because it would allow unauthorized access to the database or other sensitive resources.
+Kubernetes tries to help with this by using Secrets, a way to securely store sensitive information. However, Kubernetes Secrets are only base64-encoded, which means they aren’t truly encrypted. Anyone with access to the secrets can easily decode them, which doesn’t provide real protection. So, what’s the better solution? Asymmetric encryption.
+Asymmetric encryption works with two keys: a public key and a private key. The idea is simple: encrypt the secrets with the public key, and only someone who holds the private key can decrypt them. This way, even if someone gets hold of the encrypted secrets, they can’t read them without access to the private key — which stays safe within the Kubernetes cluster.
+Now, here's where things can get tricky: the encryption keys used in Kubernetes can expire or need to be rotated for security purposes. Without a system in place to automate this key rotation, it can quickly become a manual and error-prone process. That’s where we need a solution to keep everything secure without a lot of hassle.
+The proposed solution here is to automate the re-encryption of all SealedSecret resources in Kubernetes. This would enhance the kubeseal CLI tool and allow it to automatically handle the rotation of the Sealed Secrets controller's public key. This way, all secrets stay securely encrypted, and the private keys are never exposed, ensuring a much more streamlined and secure process for managing secrets in Kubernetes.
 
-The project leverages a CI/CD pipeline to automate and streamline the entire process. The pipeline involves several key components to handle the encryption, logging, error reporting, and synchronization of changes across multiple environments:
+In the next sections, I'll break down how this works in practice, step by step, and explain how automating this process can save time, reduce human error, and keep everything secure in your Kubernetes environment.
 
 ### Key Components of the Solution:
-
 #### GitHub: The central repository for storing SealedSecrets YAML files. It hosts the versioned configuration files for SealedSecrets and tracks changes made throughout the re-  encryption process.
 #### Jenkins: Orchestrates the entire re-encryption process. It automates the following tasks:
   - Pulling the latest changes from the GitHub repository.
