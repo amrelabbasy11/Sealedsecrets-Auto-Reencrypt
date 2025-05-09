@@ -46,7 +46,6 @@ In the next sections, I'll break down how this works in practice, step by step, 
   - Jenkinsfile: The script that tells Jenkins exactly how to automatically fetch the new certificate and re-encrypt your secrets.
   - master.key: The secret key the Sealed Secrets system uses to unlock your original secrets.
   - new-cert.pem: The new public key used to lock up your secrets again during the re-encryption process in Jenkins.
-  - private-key.pem: Possibly a key used for managing the main secret key (master.key) or other security tasks.
   - public-cert.pem: Similar to private-key.pem, likely involved in managing the security keys.
   - reencrypt.sh: A script you might run manually to help with the re-encryption, similar to what Jenkins does automatically.
  
@@ -144,6 +143,7 @@ In the next sections, I'll break down how this works in practice, step by step, 
       - This command will return a JSON array of all SealedSecret objects.
       `kubectl get sealedsecrets --all-namespaces -o json`
       - This command fetches the decrypted Kubernetes Secret corresponding to the SealedSecret.
+        
       `kubectl get secret ${secretName} -n ${ns} -o yaml > ${REPO_DIR}/secret.yaml`
   
 
