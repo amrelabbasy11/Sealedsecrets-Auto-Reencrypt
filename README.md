@@ -8,16 +8,16 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
 
 ### Key Components of the Solution:
 
-- GitHub: The central repository for storing SealedSecrets YAML files. It hosts the versioned configuration files for SealedSecrets and tracks changes made throughout the re-  encryption process.
-- Jenkins: Orchestrates the entire re-encryption process. It automates the following tasks:
-  Pulling the latest changes from the GitHub repository.
-  Fetching the latest public certificate from the SealedSecrets controller.
-  Re-encrypting all SealedSecrets using the updated certificate.
-  Logging the results and tracking any errors or issues during the process.
-  Committing and pushing changes back to the GitHub repository, ensuring version control of encrypted secrets.
-  Sending email notifications on both success and failure, including detailed logs for further analysis.
-- ArgoCD: Syncs the committed changes to the Kubernetes cluster. It ensures that the updated SealedSecrets are deployed across the cluster without manual intervention, maintaining the security and consistency of secrets.
-- EKS (AWS): The target Kubernetes environment where the SealedSecrets are managed and deployed. The solution integrates with Amazon Elastic Kubernetes Service (EKS) to  facilitate smooth interaction with the Kubernetes API and ensures that the re-encrypted secrets are propagated securely.
+#### GitHub: The central repository for storing SealedSecrets YAML files. It hosts the versioned configuration files for SealedSecrets and tracks changes made throughout the re-  encryption process.
+#### Jenkins: Orchestrates the entire re-encryption process. It automates the following tasks:
+  - Pulling the latest changes from the GitHub repository.
+  - Fetching the latest public certificate from the SealedSecrets controller.
+  - Re-encrypting all SealedSecrets using the updated certificate.
+  - Logging the results and tracking any errors or issues during the process.
+  - Committing and pushing changes back to the GitHub repository, ensuring version control of encrypted secrets.
+  - Sending email notifications on both success and failure, including detailed logs for further analysis.
+#### ArgoCD: Syncs the committed changes to the Kubernetes cluster. It ensures that the updated SealedSecrets are deployed across the cluster without manual intervention, maintaining the security and consistency of secrets.
+#### EKS (AWS): The target Kubernetes environment where the SealedSecrets are managed and deployed. The solution integrates with Amazon Elastic Kubernetes Service (EKS) to  facilitate smooth interaction with the Kubernetes API and ensures that the re-encrypted secrets are propagated securely.
 
 ---
 
