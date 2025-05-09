@@ -151,11 +151,12 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
      ### Encrypt (Re-seal using New Certificate)
        - Command used:
          
-         `kubeseal --cert ${REPO_DIR}/new-cert.pem \
-        --format yaml \
-        --namespace ${ns} \
-        < ${REPO_DIR}/secret.yaml \
-        > ${REPO_DIR}/sealedsecrets-reencrypted/${ns}-${secretName}.yaml`
+           `kubeseal --cert ${REPO_DIR}/new-cert.pem \
+              --format yaml \
+              --namespace ${ns} \
+              < ${REPO_DIR}/secret.yaml \
+              > ${REPO_DIR}/sealedsecrets-reencrypted/${ns}-${secretName}.yaml`
+         
        - This generates a new SealedSecret using the latest certificate.
        - The Output from This Stage:
          
