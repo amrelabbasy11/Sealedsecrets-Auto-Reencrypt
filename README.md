@@ -184,6 +184,7 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
   - Error Reporting: Any failures during the re-encryption or sync processes should be logged in Jenkins and reported. For example, you could use the following
     snippet to log errors:
      `echo "$(date): Failed to re-encrypt $SECRET_NAME" >> re-encryption-errors.log`
+  - Email Notification: Email alerts can be sent on pipeline success, failure, or cancellation to notify the DevOps team. This enhances visibility and ensures rapid                 response to errors or issues in the re-encryption process.
 
 #### Ensuring the Security of Private Keys
 - The pipeline logs the entire re-encryption process, including detailed information on each secret processed, warnings, errors, and a summary of the re-encryption status.        These logs are saved in the logs directory and are part of the artifacts archived at the end of the build. Logs are also included in the email notifications for
@@ -242,8 +243,11 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
 
 ---
 
-# Email Notification
-To set up email notifications in Jenkins, follow these steps:
+## Email Notification (Logging & Reporting)
+
+### Purpose: Email notifications provide real-time updates on the pipeline status (e.g., success, failure, or unstable builds). This ensures quick awareness of any issues in the re-encryption process.
+
+### To set up email notifications in Jenkins, follow these steps:
 
 1. Access Jenkins System Settings
    - Log in to your Jenkins dashboard.
