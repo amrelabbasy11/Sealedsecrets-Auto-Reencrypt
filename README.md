@@ -231,23 +231,71 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
 ### jenkins-build-artifacts
   ![WhatsApp Image 2025-05-08 at 19 10 53_1a75c8b7](https://github.com/user-attachments/assets/16f0d888-58e1-47fc-ad64-be922824e5ed)
 
-
 ---
-## Authentication & Security
- ### Kubernetes 
-   - Use sealed secrets to ensure only the controller can decrypt the secrets
-   - Limit kubeseal access to CI-only environments
+# Authentication & Access Control
 
- ### GitHub
-   - Store tokens/keys in Jenkins as secrets
+### 1. Jenkins and AWS EKS
+- Overview: To link Jenkins with AWS EKS, you need to set up AWS credentials, configure the Kubernetes CLI (`kubectl`), and ensure Jenkins has the required access.
 
- ### Jenkins
-   - Rotate stored credentials periodically
-   - Isolate this pipeline in a folder with limited access
+#### Steps to Link Jenkins with AWS EKS:
+1. Generate AWS Access and Secret Keys:
+   - Sign in to your AWS account.
+   - Navigate to **IAM** (Identity and Access Management).
+   - Go to **Users** → Select your user → **Security Credentials** → **Create access key**.
+   - Save the **Access Key ID** and **Secret Access Key**.
 
- ### ArgoCD:
-   - Enable SSO or role-based access
-   - Limit write access to only sync and read secrets
+2. Set AWS Credentials in Jenkins:
+   - In Jenkins, go to **Manage Jenkins** → **Manage Credentials** → **(Global)**.
+   - Click **Add Credentials** → Select **"AWS Credentials"**.
+   - Enter the **Access Key ID** and **Secret Access Key** from AWS.
+
+3. Install and Configure Kubernetes CLI (`kubectl`) on Jenkins:
+   - Ensure `kubectl` is installed on Jenkins agents.
+   - In Jenkins, use a pipeline step to configure `kubectl` to interact with your EKS cluster.
+   - Example:
+     ```bash
+     aws eks --region eu-north-1 update-kubeconfig --name my-eks-cluster
+     ```
+### 2. Jenkins and GitHub
+
+- Overview: To link Jenkins with GitHub, you can use a **GitHub Personal Access Token (PAT)** to authenticate Jenkins to access repositories.
+
+#### Steps to Link Jenkins with GitHub:
+1. Generate GitHub Personal Access Token (PAT):
+   - Go to **GitHub Developer Settings**.
+   - Click **Generate new token**.
+   - Select **repo**, **workflow**, and other required scopes.
+   - Copy the generated **PAT**.
+
+2. Set GitHub Token in Jenkins:
+   - In Jenkins, go to **Manage Jenkins** → **Manage Credentials** → **(Global)**.
+   - Click **Add Credentials** → Select **"Secret Text"**.
+   - Paste the GitHub PAT into the **Secret** field and give it a **ID** (e.g., `github-token`).
+
+3. Configure GitHub Webhook:
+   - In your GitHub repository, go to **Settings** → **Webhooks** → **Add webhook**.
+   - Set the **Payload URL** to your Jenkins server's webhook URL (`http://192.168.52.130:8080/github-webhook/`).
+   - Choose **Just the push event** for triggers.
+
+### 3. ArgoCD and GitHub
+
+- Overview: ArgoCD integrates with GitHub to enable automated deployment to Kubernetes based on changes pushed to a GitHub repository.
+
+#### Steps to Link ArgoCD with GitHub:
+1. Generate GitHub Personal Access Token (PAT):
+   - Follow the same steps as described in the Jenkins-GitHub integration section to generate a PAT with the **repo** and **admin:repo_hook** scopes.
+
+2. Set GitHub Token in ArgoCD:
+   - Log in to the ArgoCD UI.
+   - Go to **Settings** → **Repositories** → **Connect Repo**.
+   - Select **GitHub** as the repository type and paste the **GitHub PAT** into the authentication section.
+
+3. Set up ArgoCD to Sync with GitHub:
+   - In the ArgoCD UI, go to **Applications** → **Create Application**.
+   - Set the **Source** to your GitHub repository and configure the **Destination** (your Kubernetes cluster).
+   - Enable **Auto-sync** to automatically sync changes from GitHub to the cluster when changes are pushed.
+
+#### For Secuirity and Authentication: Use sealed secrets to ensure only the controller can decrypt the secrets
 
 ---
 
