@@ -32,7 +32,8 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
   
 ## Plan Diagram 
 
-![WhatsApp Image 2025-05-07 at 21 19 44_3360f69c](https://github.com/user-attachments/assets/9f5f549f-e6c4-449e-aa7f-03f1e74b02b2)
+![WhatsApp Image 2025-05-09 at 09 20 44_63898b53](https://github.com/user-attachments/assets/f45078d8-e205-435d-b9df-4cfe6a59464d)
+
 
 ---
 
