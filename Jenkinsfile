@@ -232,7 +232,7 @@ pipeline {
                         to: 'amrelabbasy2003@gmail.com',
                         mimeType: 'text/html'
                     )
-                } catch (Exception e) {
+                } catch (Exception e {
                     echo "Failed to send email: ${e}"
                 }
             }
