@@ -284,9 +284,13 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
        - Success Image:
          ![WhatsApp Image 2025-05-09 at 01 34 22_5c497063](https://github.com/user-attachments/assets/fd69c7fb-b1af-46c3-80da-31fc776fbb30)
 
+      - Debug the email notification to ensure that failure works by comment line `//`:
+        ![WhatsApp Image 2025-05-09 at 03 56 14_abaa99b0](https://github.com/user-attachments/assets/096eb6de-ba8c-4325-8174-0d7858e3dd5a)
+
 
 - Note
-  If the email is not sent even after following the steps you mentioned, try adding your email as a credential in Jenkins.         Here’s how you can do it : 
+  If the email is not sent even after following the steps you mentioned, try adding your email as a credential in Jenkins.
+   Here’s how you can do it : 
    Step 1: Add Your Email as a Credential in Jenkins -> Open Jenkins Dashboard -> Go to Jenkins Home -> Click on Manage Jenkins. 
            Go to Credentials Management
            Click on Manage Credentials -> Select (Global credentials).
