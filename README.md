@@ -66,7 +66,7 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
 
 - Add GitHub credentials (Personal Access Token or SSH key)
 - Add Kubernetes CLI credentials:
-  - Store `kubeconfig` as a secret file in Jenkins
+- Store `kubeconfig` as a secret file in Jenkins
 - Add Sealed Secrets public cert fetching logic in pipeline script
 
 
@@ -143,6 +143,7 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
 
      ### Fetch Cert: Jenkins fetches the latest public certificate from the Sealed Secrets controller.
       - This retrieves the controller’s public certificate needed for re-encryption.
+        
             `kubeseal --fetch-cert \
             --controller-name=sealed-secrets-controller \
             --controller-namespace=sealed-secrets \
@@ -191,7 +192,9 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
   - Jenkins Console Logs: Capture all actions in the pipeline with detailed logs.
   - Error Reporting: Any failures during the re-encryption or sync processes should be logged in Jenkins and reported. For example, you could use the following
     snippet to log errors:
+    
      `echo "$(date): Failed to re-encrypt $SECRET_NAME" >> re-encryption-errors.log`
+    
   - Email Notification: Email alerts can be sent on pipeline success, failure, or cancellation to notify the DevOps team. This enhances visibility and ensures rapid                 response to errors or issues in the re-encryption process.
 
 #### Ensuring the Security of Private Keys
@@ -206,14 +209,15 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
              --namespace ${ns} \
              < ${REPO_DIR}/secret.yaml \
              > ${REPO_DIR}/sealedsecrets-reencrypted/${ns}-${secretName}.yaml 2>> ${LOG_DIR}/reencryption-errors.log`
-    `# Final summary of the process`
-    `echo "Re-encryption Summary:" > ${LOG_DIR}/summary.log`
-    `echo "Total secrets processed: ${totalSecretsProcessed}" >> ${LOG_DIR}/summary.log`
-    `echo "Total errors encountered: ${totalErrors}" >> ${LOG_DIR}/summary.log`
+            `# Final summary of the process`
+            `echo "Re-encryption Summary:" > ${LOG_DIR}/summary.log`
+            `echo "Total secrets processed: ${totalSecretsProcessed}" >> ${LOG_DIR}/summary.log`
+            `echo "Total errors encountered: ${totalErrors}" >> ${LOG_DIR}/summary.log`
   
 #### Security of Private Keys
 - The private keys used by the SealedSecrets controller are securely handled within the Kubernetes cluster and are never exposed in the pipeline. Only the public certificate      is fetched for re-encryption. Additionally, sensitive credentials (AWS and GitHub) are securely managed using Jenkins' credential-binding mechanisms.
 - command that i used :
+  
   ` kubeseal --fetch-cert \
          --controller-name=sealed-secrets-controller \
          --controller-namespace=sealed-secrets \
