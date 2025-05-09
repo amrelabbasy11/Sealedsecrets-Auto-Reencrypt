@@ -71,8 +71,13 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
 
 
 ### 2. Amazon EKS
-
-- Create an **EKS cluster** using `eksctl` or the AWS Console.
+ #### Why Use Amazon EKS as Kubernetes Cluster Instead of Others?
+  - EKS is managed by AWS, so you don’t worry about setup or upgrades.
+  - EKS works at scale, across many machines and data centers.
+  - EKS is secure and works well with other AWS services (like IAM, CloudWatch, S3).
+  - EKS can save costs at scale using smart features like auto-scaling and spot instances.
+    
+#### Create an **EKS cluster** using `eksctl` or the AWS Console.
   
   ![WhatsApp Image 2025-05-08 at 21 37 43_1ae09569](https://github.com/user-attachments/assets/f08dd208-4880-4267-960d-eea9e0bc6033)
 
