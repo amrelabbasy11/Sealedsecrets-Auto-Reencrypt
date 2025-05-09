@@ -305,7 +305,11 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
   
 ---
 ## Configuring ArgoCD and Connecting to GitHub Repository
-
+ ### What Argocd does:
+  - Syncs SealedSecrets - Automatically deploys encrypted secrets from Git to Kubernetes
+  - Monitors Health - Reports if secrets fail to decrypt or deploy properly
+  - Triggers Alerts - Notifies when secrets become "Degraded" for quick troubleshooting
+    
 To enable GitOps with ArgoCD, follow these steps to connect your GitHub repository containing Kubernetes manifests:
 
 ### Step 1: Login to ArgoCD Web UI
