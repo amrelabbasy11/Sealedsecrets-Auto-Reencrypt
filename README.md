@@ -140,9 +140,12 @@ In the next sections, I'll break down how this works in practice, step by step, 
             ])`
 
      ### Fetch or Expose All Sealed Secret
-      - Command used:
+      #### Commands used:
+      - This command will return a JSON array of all SealedSecret objects.
+      `kubectl get sealedsecrets --all-namespaces -o json`
+      - This command fetches the decrypted Kubernetes Secret corresponding to the SealedSecret.
       `kubectl get secret ${secretName} -n ${ns} -o yaml > ${REPO_DIR}/secret.yaml`
-      This command fetches the decrypted Kubernetes Secret corresponding to the SealedSecret.
+  
 
      ### Fetch Cert: Jenkins fetches the latest public certificate from the Sealed Secrets controller.
       - This retrieves the controller’s public certificate needed for re-encryption.
