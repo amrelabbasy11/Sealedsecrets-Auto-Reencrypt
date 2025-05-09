@@ -136,40 +136,41 @@ The project leverages a CI/CD pipeline to automate and streamline the entire pro
                 ])
             ])`
 
-     ### Fetch Cert: Jenkins fetches the latest public certificate from the Sealed Secrets controller.
-    
-       `kubeseal --fetch-cert --controller-namespace kube-system --controller-name sealed-secrets-controller > new-cert.pem`
+     ### Fetch or Expose All Sealed Secret
+      - Command used:
+      `kubectl get secret ${secretName} -n ${ns} -o yaml > ${REPO_DIR}/secret.yaml`
+      This command fetches the decrypted Kubernetes Secret corresponding to the SealedSecret.
 
-     ### Decrypt + Re-encrypt: Each secret is decrypted and re-encrypted using the new cert.
+     ### Fetch Cert: Jenkins fetches the latest public certificate from the Sealed Secrets controller.
+      - This retrieves the controller’s public certificate needed for re-encryption.
+            `kubeseal --fetch-cert \
+            --controller-name=sealed-secrets-controller \
+            --controller-namespace=sealed-secrets \
+            > ${REPO_DIR}/new-cert.pem`
+      
+     ### Encrypt (Re-seal using New Certificate)
        - Command used:
          
-         `kubeseal \
-            --re-encrypt \
-            --controller-name sealed-secrets-controller \
-            --controller-namespace kube-system \
-            --cert new-sealed-secrets-cert.pem \`
-           ` < extracted/my-secret.yaml \`
-           ` > reencrypted/my-secret.yaml`
-    
+         `kubeseal --cert ${REPO_DIR}/new-cert.pem \
+        --format yaml \
+        --namespace ${ns} \
+        < ${REPO_DIR}/secret.yaml \
+        > ${REPO_DIR}/sealedsecrets-reencrypted/${ns}-${secretName}.yaml`
+       - This generates a new SealedSecret using the latest certificate.
        - The Output from This Stage:
-       - 
+         
          ![WhatsApp Image 2025-05-09 at 02 14 57_9bae1012](https://github.com/user-attachments/assets/61813aed-de6d-4ce6-91ed-aa91cc09a105)
  
-     ### Commit changes.
+     ### Git Commit of Updated SealedSecrets
        - Commands used:
          
-              `- name: Commit Re-sealed Secrets
-                  run: |
-                    git config --global user.name "github-actions[bot]"
-                    git config --global user.email "github-actions[bot]@users.noreply.github.com"
-                    git add sealedsecrets-reencrypted/
-                    git commit -m "Re-seal secrets using new certificate" `
+              `git add sealedsecrets-reencrypted/
+               git commit -m "Re-seal secrets using new certificate" `
          
      ### Push Changes: Re-encrypted secrets are pushed to the sealedsecrets-reencrypted/ folder in GitHub.
        - Commands Used:
          
-            `name: Push Changes
-             run: git push origin ${{ github.head_ref }}`
+            `push origin ${{ github.head_ref }}`
 
      ### ArgoCD Sync: ArgoCD auto-syncs from GitHub → EKS applies updated secrets.
      ### Post Build Actions.
