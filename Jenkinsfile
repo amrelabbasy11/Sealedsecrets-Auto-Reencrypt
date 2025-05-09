@@ -105,7 +105,7 @@ pipeline {
         stage('Decrypt + Re-encrypt') {
             steps {
                 script {
-                    env.SECRET_COUNT = 0
+                    // env.SECRET_COUNT = 0
                     env.ERROR_COUNT = 0
 
                     def namespaces = sh(script: 'kubectl get ns -o jsonpath="{.items[*].metadata.name}"', returnStdout: true).trim().split()
@@ -232,7 +232,7 @@ pipeline {
                         to: 'amrelabbasy2003@gmail.com',
                         mimeType: 'text/html'
                     )
-                } catch (Exception e {
+                } catch (Exception e) {
                     echo "Failed to send email: ${e}"
                 }
             }
