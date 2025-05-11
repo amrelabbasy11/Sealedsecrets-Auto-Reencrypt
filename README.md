@@ -129,30 +129,39 @@ In the next sections, I'll break down how this works in practice, step by step, 
 
      ### Trigger: Developer triggers a job or webhook from GitHub.
      - Automatically triggered via GitHub webhook push events using `githubPush()`.
-     - Commands:
-     - 
+
           `properties([
                 pipelineTriggers([
                     githubPush()
                 ])
             ])`
 
-     ### Fetch or Expose All Sealed Secret
-      #### Commands used:
-      - This command will return a JSON array of all SealedSecret objects.
-      `kubectl get sealedsecrets --all-namespaces -o json`
-      - This command fetches the decrypted Kubernetes Secret corresponding to the SealedSecret.
-        
-      `kubectl get secret ${secretName} -n ${ns} -o yaml > ${REPO_DIR}/secret.yaml`
-  
+     ###  Re-encrypt Stage
+        `kubeseal --cert new-cert.pem \
+        --format yaml \
+        --namespace ${ns} \
+        < input.yaml > ${ns}-${secretName}.yaml \
+        2>> ${LOG_DIR}/reencryption-errors.log`
 
-     ### Fetch Cert: Jenkins fetches the latest public certificate from the Sealed Secrets controller.
+      #### Enhanced Features
+       - Logging
+         `echo "Processing ${ns}/${secretName} with cert $(openssl x509 -in new-cert.pem -noout -fingerprint)" >> ${LOG_DIR}/process.log`
+
+      - Security
+        # Memory-only processing
+        `kubectl get secret ${name} -n ${ns} -o json | kubeseal --cert <(cat new-cert.pem) > output.yaml`
+
+
+      ### Fetch Certificate
+      - Jenkins fetches the latest public certificate from the Sealed Secrets controller.
       - This retrieves the controller’s public certificate needed for re-encryption.
-        
             `kubeseal --fetch-cert \
             --controller-name=sealed-secrets-controller \
             --controller-namespace=sealed-secrets \
             > ${REPO_DIR}/new-cert.pem`
+
+     - Security Check:
+      `openssl x509 -in new-cert.pem -noout -text >> ${LOG_DIR}/cert-audit.log`
       
      ### Encrypt (Re-seal using New Certificate)
        - Command used:
@@ -181,57 +190,6 @@ In the next sections, I'll break down how this works in practice, step by step, 
 
      ### ArgoCD Sync: ArgoCD auto-syncs from GitHub → EKS applies updated secrets.
      ### Post Build Actions.
-
-   Each stage should be properly monitored, with any issues logged and reported.
-
-### 2. Pipeline Configuration
-
-- Install required Jenkins plugins:
-  - **Git Plugin**: For interacting with GitHub.
-  - **GitHub Plugin**: For pushing to GitHub.
-  - **Pipeline Plugin**: For defining the pipeline stages.
-  - **SSH Agent Plugin**: For handling SSH key-based authentication.
-  - **Kubernetes CLI Plugin** (optional): For interacting with Kubernetes clusters using `kubectl`.
-
-#### Logging or Reporting Mechanism
-  - Jenkins Console Logs: Capture all actions in the pipeline with detailed logs.
-  - Error Reporting: Any failures during the re-encryption or sync processes should be logged in Jenkins and reported. For example, you could use the following
-    snippet to log errors:
-    
-     `echo "$(date): Failed to re-encrypt $SECRET_NAME" >> re-encryption-errors.log`
-    
-  - Email Notification: Email alerts can be sent on pipeline success, failure, or cancellation to notify the DevOps team. This enhances visibility and ensures rapid                 response to errors or issues in the re-encryption process.
-
-#### Ensuring the Security of Private Keys
-- The pipeline logs the entire re-encryption process, including detailed information on each secret processed, warnings, errors, and a summary of the re-encryption status.        These logs are saved in the logs directory and are part of the artifacts archived at the end of the build. Logs are also included in the email notifications for
-  both success and failure, allowing detailed tracking of the re-encryption process.
-- command that i used :  
-   
-    `echo "[INFO] Processing ${ns}/${secretName}" >> ${LOG_DIR}/reencryption.log`
-    `# Capturing any errors during re-encryption and logging to a separate file`
-    `kubeseal --cert ${REPO_DIR}/new-cert.pem \
-             --format yaml \
-             --namespace ${ns} \
-             < ${REPO_DIR}/secret.yaml \
-             > ${REPO_DIR}/sealedsecrets-reencrypted/${ns}-${secretName}.yaml 2>> ${LOG_DIR}/reencryption-errors.log`
-            `# Final summary of the process`
-            `echo "Re-encryption Summary:" > ${LOG_DIR}/summary.log`
-            `echo "Total secrets processed: ${totalSecretsProcessed}" >> ${LOG_DIR}/summary.log`
-            `echo "Total errors encountered: ${totalErrors}" >> ${LOG_DIR}/summary.log`
-  
-#### Security of Private Keys
-- The private keys used by the SealedSecrets controller are securely handled within the Kubernetes cluster and are never exposed in the pipeline. Only the public certificate      is fetched for re-encryption. Additionally, sensitive credentials (AWS and GitHub) are securely managed using Jenkins' credential-binding mechanisms.
-- command that i used :
-  
-  ` kubeseal --fetch-cert \
-         --controller-name=sealed-secrets-controller \
-         --controller-namespace=sealed-secrets \
-         > ${REPO_DIR}/new-cert.pem`  
-
-#### Handling Large Numbers of SealedSecrets
-- The pipeline handles SealedSecrets efficiently, processing each namespace and its secrets sequentially. For large datasets, it can be further optimized by
-  introducing parallelization to handle multiple namespaces or secrets at once.
-
 
 ### Successful Pipeline Execution
  ![WhatsApp Image 2025-05-09 at 01 59 29_ceb55f41](https://github.com/user-attachments/assets/71546b1d-120f-4510-829e-68e9e9ed5ba8)
