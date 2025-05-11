@@ -34,8 +34,8 @@ In the next sections, I'll break down how this works in practice, step by step, 
 
   
 ## Plan Diagram 
+![Add a subheading](https://github.com/user-attachments/assets/80801daa-2a7f-4e4a-b3bd-ee5df98f1d35)
 
-![WhatsApp Image 2025-05-09 at 09 20 44_63898b53](https://github.com/user-attachments/assets/f45078d8-e205-435d-b9df-4cfe6a59464d)
 
 
 ---
