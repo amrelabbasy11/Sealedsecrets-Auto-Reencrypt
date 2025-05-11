@@ -34,7 +34,7 @@ In the next sections, I'll break down how this works in practice, step by step, 
 
   
 ## Plan Diagram 
-![Add a subheading](https://github.com/user-attachments/assets/80801daa-2a7f-4e4a-b3bd-ee5df98f1d35)
+![Add a subheading(1)](https://github.com/user-attachments/assets/46276f8b-e959-42bc-b684-5691e548a89d)
 
 
 
