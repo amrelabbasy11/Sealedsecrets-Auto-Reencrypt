@@ -148,7 +148,7 @@ In the next sections, I'll break down how this works in practice, step by step, 
          `echo "Processing ${ns}/${secretName} with cert $(openssl x509 -in new-cert.pem -noout -fingerprint)" >> ${LOG_DIR}/process.log`
 
       - Security
-        # Memory-only processing
+        Memory-only processing
         `kubectl get secret ${name} -n ${ns} -o json | kubeseal --cert <(cat new-cert.pem) > output.yaml`
 
 
