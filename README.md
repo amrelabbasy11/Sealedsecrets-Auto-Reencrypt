@@ -129,7 +129,7 @@ In the next sections, I'll break down how this works in practice, step by step, 
 
      ### Trigger: Developer triggers a job or webhook from GitHub.
      - Automatically triggered via GitHub webhook push events using `githubPush()`.
-
+    #### Commands Used:
           `properties([
                 pipelineTriggers([
                     githubPush()
@@ -137,6 +137,7 @@ In the next sections, I'll break down how this works in practice, step by step, 
             ])`
 
      ###  Re-encrypt Stage
+      #### Commands Used:
         `kubeseal --cert new-cert.pem \
         --format yaml \
         --namespace ${ns} \
@@ -145,22 +146,26 @@ In the next sections, I'll break down how this works in practice, step by step, 
 
       #### Enhanced Features
        - Logging
+         #### Commands Used:
          `echo "Processing ${ns}/${secretName} with cert $(openssl x509 -in new-cert.pem -noout -fingerprint)" >> ${LOG_DIR}/process.log`
 
-      - Security
-        Memory-only processing
+      - Security (Memory-only processing)
+      #### - Commands Used:
+          
         `kubectl get secret ${name} -n ${ns} -o json | kubeseal --cert <(cat new-cert.pem) > output.yaml`
 
 
       ### Fetch Certificate
       - Jenkins fetches the latest public certificate from the Sealed Secrets controller.
       - This retrieves the controller’s public certificate needed for re-encryption.
+        
             `kubeseal --fetch-cert \
             --controller-name=sealed-secrets-controller \
             --controller-namespace=sealed-secrets \
             > ${REPO_DIR}/new-cert.pem`
 
      - Security Check:
+      #### Commands Used:
       `openssl x509 -in new-cert.pem -noout -text >> ${LOG_DIR}/cert-audit.log`
       
      ### Encrypt (Re-seal using New Certificate)
@@ -190,6 +195,8 @@ In the next sections, I'll break down how this works in practice, step by step, 
 
      ### ArgoCD Sync: ArgoCD auto-syncs from GitHub → EKS applies updated secrets.
      ### Post Build Actions.
+
+    #### Future Scalability: This pipeline is designed to efficiently handle large-scale secret re-encryption through parallel processing and batched operations when needed.
 
 ### Successful Pipeline Execution
  ![WhatsApp Image 2025-05-09 at 01 59 29_ceb55f41](https://github.com/user-attachments/assets/71546b1d-120f-4510-829e-68e9e9ed5ba8)
