@@ -1,4 +1,4 @@
-# Sealedsecrets-Auto-Reencrypt
+# Kubeseal Auto-Re-encryption Subsystem.
 
 ##  Overview
 
